@@ -9,7 +9,7 @@ Aplikasi berbasis web untuk mengelola **presensi siswa**, **presensi guru**, **j
 - Penjadwalan pelajaran
 - Dashboard admin
 - Laporan PDF
-- Multi role user (Admin, Guru, Kepala Sekolah, Orang Tua)
+- Multi role user (Admin, Guru, Orang Tua)
 - Responsive design (Desktop, Tablet, Mobile)
 
 ## 🛠️ Teknologi
