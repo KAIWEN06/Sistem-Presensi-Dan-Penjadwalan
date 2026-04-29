@@ -1,15 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   User,
   ChevronRight,
+  Search,
+  ChevronsLeft,
+  ChevronsRight,
+  CalendarDays,
+  Filter,
 } from "lucide-react";
-
-import {
-  FaCheckCircle,
-  FaClock,
-  FaTimesCircle,
-  FaUser,
-} from "react-icons/fa";
 
 import {
   BarChart,
@@ -20,7 +18,7 @@ import {
   ResponsiveContainer,
   Cell,
   CartesianGrid,
-  LabelList
+  LabelList,
 } from "recharts";
 
 import api from "../../lib/axios";
@@ -42,12 +40,35 @@ const LihatPresensi = () => {
 
   const [loading, setLoading] = useState(false);
 
+  /* FILTER ASLI (tidak diubah fungsi) */
   const [bulan, setBulan] = useState("");
   const [tahun, setTahun] = useState("");
   const [semester, setSemester] = useState("");
   const [hari, setHari] = useState("");
 
-  /* ================= LOAD ANAK ================= */
+  /* tambahan date filter frontend only */
+  const [dateFilter, setDateFilter] = useState("");
+
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  /* auto responsive per page */
+  const [perPage, setPerPage] = useState(10);
+
+  useEffect(() => {
+    const updatePerPage = () => {
+      if (window.innerWidth < 640) setPerPage(5);
+      else if (window.innerWidth < 1024) setPerPage(8);
+      else setPerPage(12);
+    };
+
+    updatePerPage();
+    window.addEventListener("resize", updatePerPage);
+
+    return () =>
+      window.removeEventListener("resize", updatePerPage);
+  }, []);
+
   const loadAnak = async () => {
     try {
       const res = await api.get("/ortu/anak");
@@ -63,7 +84,6 @@ const LihatPresensi = () => {
     }
   };
 
-  /* ================= LOAD PRESENSI ================= */
   const loadPresensi = async (nis) => {
     try {
       setLoading(true);
@@ -91,7 +111,6 @@ const LihatPresensi = () => {
 
       setTableData(res.data?.riwayat || []);
       setChartData(res.data?.chartData || []);
-
       setLoading(false);
     } catch (err) {
       console.log(err);
@@ -109,47 +128,64 @@ const LihatPresensi = () => {
     }
   }, [selectedAnak, bulan, tahun, semester, hari]);
 
-  const statCards = [
-    {
-      title: "Hadir",
-      value: stats.hadir,
-      color: "bg-green-500",
-      icon: <FaCheckCircle />,
-    },
-    {
-      title: "Izin",
-      value: stats.izin,
-      color: "bg-yellow-400",
-      icon: <FaClock />,
-    },
-    {
-      title: "Sakit",
-      value: stats.sakit,
-      color: "bg-red-500",
-      icon: <FaTimesCircle />,
-    },
-    {
-      title: "Alpha",
-      value: stats.alpha,
-      color: "bg-gray-500",
-      icon: <FaUser />,
-    },
-  ];
+  useEffect(() => {
+    setPage(1);
+  }, [tableData, search, dateFilter, perPage]);
+
+  const statusColor = (status) => {
+    const s = status?.toLowerCase();
+
+    if (s === "hadir") return "bg-green-500";
+    if (s === "izin") return "bg-yellow-500";
+    if (s === "sakit") return "bg-red-500";
+    return "bg-gray-500";
+  };
+
+  const filteredData = useMemo(() => {
+    const q = search.toLowerCase();
+
+    return tableData.filter((row) => {
+      const matchSearch =
+        row.tanggal?.toLowerCase().includes(q) ||
+        row.hari?.toLowerCase().includes(q) ||
+        row.jam?.toLowerCase().includes(q) ||
+        row.mapel?.toLowerCase().includes(q) ||
+        row.status?.toLowerCase().includes(q);
+
+      const matchDate = dateFilter
+        ? row.tanggal === dateFilter
+        : true;
+
+      return matchSearch && matchDate;
+    });
+  }, [tableData, search, dateFilter]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredData.length / perPage)
+  );
+
+  const paginatedData = filteredData.slice(
+    (page - 1) * perPage,
+    page * perPage
+  );
+
+  const changePage = (value) => {
+    setPage(Math.min(Math.max(value, 1), totalPages));
+  };
 
   return (
     <div className="space-y-6">
 
-      {/* ================= PILIH ANAK ================= */}
+      {/* PILIH ANAK */}
       <div className="overflow-x-auto pb-1">
         <div className="flex gap-4 min-w-max">
-
           {students.map((s, i) => (
             <button
               key={i}
               onClick={() => setSelectedAnak(s)}
               className={`
-                min-w-[240px] rounded-2xl border p-4 text-left
-                transition-all duration-200 shadow-sm
+                min-w-[240px] rounded-2xl border p-4 text-left shadow-sm transition
                 ${
                   selectedAnak?.nis === s.nis
                     ? "bg-white border-[#5A3E36] ring-2 ring-[#E8DDD8]"
@@ -158,26 +194,13 @@ const LihatPresensi = () => {
               `}
             >
               <div className="flex items-center gap-3">
-
-                <div
-                  className={`
-                    w-11 h-11 rounded-xl flex items-center justify-center
-                    ${
-                      selectedAnak?.nis === s.nis
-                        ? "bg-[#EEE7E4]"
-                        : "bg-gray-100"
-                    }
-                  `}
-                >
+                <div className="w-11 h-11 rounded-xl bg-gray-100 flex items-center justify-center">
                   <User className="w-5 h-5 text-[#5A3E36]" />
                 </div>
 
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-800">
-                    {s.nama}
-                  </p>
-
-                  <p className="text-sm text-gray-500">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold truncate">{s.nama}</p>
+                  <p className="text-sm text-gray-500 truncate">
                     {s.kelas}
                   </p>
                 </div>
@@ -186,178 +209,229 @@ const LihatPresensi = () => {
               </div>
             </button>
           ))}
-
         </div>
       </div>
 
-      {/* ================= STATS ================= */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* FILTER PREMIUM */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="w-5 h-5 text-[#5A3E36]" />
+          <h2 className="font-semibold text-gray-800">
+            Filter Presensi
+          </h2>
+        </div>
 
-        {statCards.map((s, i) => (
-          <div
-            key={i}
-            className={`
-              ${s.color}
-              text-white rounded-2xl p-5 shadow-sm
-              flex items-center justify-between
-            `}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
+
+          <select
+            value={bulan}
+            onChange={(e) => setBulan(e.target.value)}
+            className="h-11 rounded-xl border px-4 bg-white"
           >
-            <div>
-              <p className="text-sm opacity-90">
-                {s.title}
-              </p>
+            <option value="">Semua Bulan</option>
+            <option value="1">Januari</option>
+            <option value="2">Februari</option>
+            <option value="3">Maret</option>
+            <option value="4">April</option>
+            <option value="5">Mei</option>
+            <option value="6">Juni</option>
+            <option value="7">Juli</option>
+            <option value="8">Agustus</option>
+            <option value="9">September</option>
+            <option value="10">Oktober</option>
+            <option value="11">November</option>
+            <option value="12">Desember</option>
+          </select>
 
-              <p className="text-2xl font-bold">
-                {s.value}
-              </p>
-            </div>
+          <select
+            value={tahun}
+            onChange={(e) => setTahun(e.target.value)}
+            className="h-11 rounded-xl border px-4 bg-white"
+          >
+            <option value="">Semua Tahun</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+          </select>
 
-            <div className="text-2xl opacity-90">
-              {s.icon}
-            </div>
+          <select
+            value={semester}
+            onChange={(e) => setSemester(e.target.value)}
+            className="h-11 rounded-xl border px-4 bg-white"
+          >
+            <option value="">Semua Semester</option>
+            <option value="ganjil">Ganjil</option>
+            <option value="genap">Genap</option>
+          </select>
+
+          <select
+            value={hari}
+            onChange={(e) => setHari(e.target.value)}
+            className="h-11 rounded-xl border px-4 bg-white"
+          >
+            <option value="">Semua Hari</option>
+            <option value="Senin">Senin</option>
+            <option value="Selasa">Selasa</option>
+            <option value="Rabu">Rabu</option>
+            <option value="Kamis">Kamis</option>
+            <option value="Jumat">Jumat</option>
+          </select>
+
+          {/* date tambahan */}
+          <div className="relative">
+            <CalendarDays className="w-4 h-4 absolute left-3 top-3.5 text-gray-400" />
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="h-11 w-full rounded-xl border pl-10 pr-4 bg-white"
+            />
           </div>
-        ))}
 
+          <button
+            onClick={() => {
+              setBulan("");
+              setTahun("");
+              setSemester("");
+              setHari("");
+              setDateFilter("");
+              setSearch("");
+            }}
+            className="h-11 rounded-xl bg-[#5A3E36] text-white font-medium hover:opacity-95"
+          >
+            Reset Filter
+          </button>
+        </div>
       </div>
 
-      {/* ================= CONTENT ================= */}
-      {/* ================= FILTER ================= */}
-<div className="bg-white rounded-2xl shadow-sm p-4">
-  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-
-    {/* BULAN */}
-    <select
-      value={bulan}
-      onChange={(e) => setBulan(e.target.value)}
-      className="border rounded-xl px-4 py-2 bg-white"
-    >
-      <option value="">Semua Bulan</option>
-      <option value="1">Januari</option>
-      <option value="2">Februari</option>
-      <option value="3">Maret</option>
-      <option value="4">April</option>
-      <option value="5">Mei</option>
-      <option value="6">Juni</option>
-      <option value="7">Juli</option>
-      <option value="8">Agustus</option>
-      <option value="9">September</option>
-      <option value="10">Oktober</option>
-      <option value="11">November</option>
-      <option value="12">Desember</option>
-    </select>
-
-    {/* TAHUN */}
-    <select
-      value={tahun}
-      onChange={(e) => setTahun(e.target.value)}
-      className="border rounded-xl px-4 py-2 bg-white"
-    >
-      <option value="">Semua Tahun</option>
-      <option value="2025">2025</option>
-      <option value="2026">2026</option>
-      <option value="2027">2027</option>
-    </select>
-
-    {/* SEMESTER */}
-    <select
-      value={semester}
-      onChange={(e) => setSemester(e.target.value)}
-      className="border rounded-xl px-4 py-2 bg-white"
-    >
-      <option value="">Semua Semester</option>
-      <option value="ganjil">Ganjil</option>
-      <option value="genap">Genap</option>
-    </select>
-
-    {/* HARI */}
-    <select
-      value={hari}
-      onChange={(e) => setHari(e.target.value)}
-      className="border rounded-xl px-4 py-2 bg-white"
-    >
-      <option value="">Semua Hari</option>
-      <option value="Senin">Senin</option>
-      <option value="Selasa">Selasa</option>
-      <option value="Rabu">Rabu</option>
-      <option value="Kamis">Kamis</option>
-      <option value="Jumat">Jumat</option>
-    </select>
-
-    {/* RESET */}
-    <button
-      onClick={() => {
-        setBulan("");
-        setTahun("");
-        setSemester("");
-        setHari("");
-      }}
-      className="rounded-xl bg-[#5A3E36] text-white px-4 py-2"
-    >
-      Reset Filter
-    </button>
-
-  </div>
-</div>
-
+      {/* CONTENT */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* ================= TABLE ================= */}
+        {/* RIWAYAT */}
         <div className="bg-white rounded-2xl shadow-sm p-5">
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-4">
+            <h2 className="font-semibold text-gray-700">
+              Riwayat Presensi
+            </h2>
 
-          <h2 className="font-semibold text-gray-700 mb-4">
-            Riwayat Presensi
-          </h2>
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari data..."
+                className="w-full border rounded-xl pl-9 pr-4 py-2 text-sm"
+              />
+            </div>
+          </div>
 
           {loading ? (
             <div className="space-y-3">
-              <div className="h-12 bg-gray-100 rounded-xl animate-pulse"></div>
-              <div className="h-12 bg-gray-100 rounded-xl animate-pulse"></div>
-              <div className="h-12 bg-gray-100 rounded-xl animate-pulse"></div>
+              <div className="h-20 bg-gray-100 rounded-xl animate-pulse"></div>
+              <div className="h-20 bg-gray-100 rounded-xl animate-pulse"></div>
             </div>
-          ) : tableData.length > 0 ? (
-            <div className="overflow-x-auto">
+          ) : filteredData.length > 0 ? (
+            <>
+              {/* MOBILE */}
+              <div className="block md:hidden space-y-3">
+                {paginatedData.map((row, i) => (
+                  <div
+                    key={i}
+                    className="border rounded-2xl p-4 bg-gray-50"
+                  >
+                    <div className="flex justify-between gap-3 mb-3">
+                      <div>
+                        <p className="font-semibold text-sm">
+                          {row.mapel}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {row.tanggal}
+                        </p>
+                      </div>
 
-              <table className="w-full text-sm">
-                <thead>
+                      <span
+                        className={`px-3 py-1 text-xs text-white rounded-full h-fit ${statusColor(
+                          row.status
+                        )}`}
+                      >
+                        {row.status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-gray-400">Hari</p>
+                        <p>{row.hari}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Jam</p>
+                        <p>{row.jam}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="flex gap-2">
+                  <button
+                    disabled={page === 1}
+                    onClick={() => changePage(page - 1)}
+                    className="flex-1 border rounded-xl py-2 disabled:opacity-40"
+                  >
+                    Prev
+                  </button>
+
+                  <button
+                    disabled={page === totalPages}
+                    onClick={() => changePage(page + 1)}
+                    className="flex-1 border rounded-xl py-2 disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+
+              {/* DESKTOP */}
+          <div className="hidden md:block">
+            {/* hapus scroll kanan kiri */}
+            <div className="rounded-xl border overflow-hidden">
+              <table className="w-full table-fixed text-sm">
+                <thead className="bg-gray-50">
                   <tr className="text-left text-gray-500 border-b">
-                    <th className="pb-3">Tanggal</th>
-                    <th>Hari</th>
-                    <th>Jam</th>
-                    <th>Mata Pelajaran</th>
-                    <th>Status</th>
+                    <th className="px-4 py-3 w-[18%]">Tanggal</th>
+                    <th className="px-4 py-3 w-[18%]">Hari</th>
+                    <th className="px-4 py-3 w-[16%]">Jam</th>
+                    <th className="px-4 py-3 w-[30%]">Mapel</th>
+                    <th className="px-4 py-3 w-[18%]">Status</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {tableData.map((row, i) => (
+                  {paginatedData.map((row, i) => (
                     <tr
                       key={i}
-                      className="border-b last:border-none"
+                      className="border-b hover:bg-gray-50"
                     >
-                      <td className="py-3">
+                      <td className="px-4 py-3 truncate">
                         {row.tanggal}
                       </td>
 
-                      <td>{row.hari}</td>
+                      <td className="px-4 py-3 truncate">
+                        {row.hari}
+                      </td>
 
-                      <td>{row.jam}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {row.jam}
+                      </td>
 
-                      <td>{row.mapel}</td>
+                      <td className="px-4 py-3 truncate">
+                        {row.mapel}
+                      </td>
 
-                      <td>
+                      <td className="px-4 py-3">
                         <span
-                          className={`
-                            px-2 py-1 rounded-full text-xs font-medium text-white
-                            ${
-                              row.status?.toLowerCase() === "hadir"
-                                ? "bg-green-500"
-                                : row.status?.toLowerCase() === "izin"
-                                ? "bg-yellow-500"
-                                : row.status?.toLowerCase() === "sakit"
-                                ? "bg-red-500"
-                                : "bg-gray-500"
-                            }
-                          `}
+                          className={`inline-flex px-3 py-1 rounded-full text-xs text-white ${statusColor(
+                            row.status
+                          )}`}
                         >
                           {row.status}
                         </span>
@@ -366,137 +440,88 @@ const LihatPresensi = () => {
                   ))}
                 </tbody>
               </table>
-
             </div>
+
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-gray-500">
+                Halaman {page} dari {totalPages}
+              </p>
+
+              <div className="flex gap-2">
+                <button
+                  disabled={page === 1}
+                  onClick={() => changePage(page - 1)}
+                  className="px-3 py-2 rounded-xl border disabled:opacity-40"
+                >
+                  <ChevronsLeft className="w-4 h-4" />
+                </button>
+
+                <button
+                  disabled={page === totalPages}
+                  onClick={() => changePage(page + 1)}
+                  className="px-3 py-2 rounded-xl border disabled:opacity-40"
+                >
+                  <ChevronsRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+            </>
           ) : (
             <div className="text-sm text-gray-400">
-              Belum ada data presensi
+              Data tidak ditemukan
             </div>
           )}
         </div>
 
-        {/* ================= CHART ================= */}
-<div className="bg-white rounded-2xl shadow-sm p-5">
+        {/* CHART */}
+        <div className="bg-white rounded-2xl shadow-sm p-5">
+          <h2 className="font-semibold text-gray-700 mb-4">
+            Statistik Presensi
+          </h2>
 
-  <div className="flex items-center justify-between mb-4">
-    <h2 className="font-semibold text-gray-700">
-      Statistik Presensi
-    </h2>
+          {loading ? (
+            <div className="h-72 bg-gray-100 rounded-xl animate-pulse"></div>
+          ) : (
+            <div className="w-full h-72">
+              <ResponsiveContainer>
+                <BarChart
+                  data={chartData}
+                  margin={{
+                    top: 20,
+                    right: 10,
+                    left: -20,
+                    bottom: 5,
+                  }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    opacity={0.18}
+                  />
 
-    {/* legend */}
-    <div className="flex flex-wrap gap-3 text-xs text-gray-500">
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 rounded-sm bg-green-500"></span>
-        Hadir
-      </div>
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} axisLine={false} tickLine={false} />
+                  <Tooltip />
 
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 rounded-sm bg-yellow-400"></span>
-        Izin
-      </div>
+                  <Bar dataKey="value" radius={[10, 10, 0, 0]}>
+                    {chartData.map((entry, index) => {
+                      let fill = "#6B7280";
 
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 rounded-sm bg-red-500"></span>
-        Sakit
-      </div>
+                      if (entry.name === "Hadir") fill = "#22C55E";
+                      else if (entry.name === "Izin") fill = "#EAB308";
+                      else if (entry.name === "Sakit") fill = "#EF4444";
 
-      <div className="flex items-center gap-1">
-        <span className="w-3 h-3 rounded-sm bg-gray-500"></span>
-        Alpha
-      </div>
-    </div>
-  </div>
+                      return <Cell key={index} fill={fill} />;
+                    })}
 
-  {loading ? (
-    <div className="h-72 bg-gray-100 rounded-xl animate-pulse"></div>
-  ) : (
-    <div className="w-full h-72">
-      <ResponsiveContainer>
-        <BarChart
-          data={chartData}
-          margin={{
-            top: 20,
-            right: 10,
-            left: -20,
-            bottom: 5
-          }}
-        >
-          <CartesianGrid
-            strokeDasharray="3 3"
-            vertical={false}
-            opacity={0.18}
-          />
-
-          <XAxis
-            dataKey="name"
-            tick={{
-              fontSize: 12,
-              fill: "#6B7280"
-            }}
-            axisLine={false}
-            tickLine={false}
-          />
-
-          <YAxis
-            allowDecimals={false}
-            tick={{
-              fontSize: 12,
-              fill: "#6B7280"
-            }}
-            axisLine={false}
-            tickLine={false}
-          />
-
-          <Tooltip
-            cursor={{ fill: "rgba(0,0,0,0.03)" }}
-            contentStyle={{
-              borderRadius: "14px",
-              border: "none",
-              boxShadow:
-                "0 10px 30px rgba(0,0,0,0.08)"
-            }}
-          />
-
-          <Bar
-            dataKey="value"
-            radius={[10, 10, 0, 0]}
-            animationDuration={700}
-          >
-            {chartData.map((entry, index) => {
-              let fill = "#6B7280";
-
-              if (entry.name === "Hadir")
-                fill = "#22C55E";
-              else if (entry.name === "Izin")
-                fill = "#EAB308";
-              else if (entry.name === "Sakit")
-                fill = "#EF4444";
-              else if (entry.name === "Alpha")
-                fill = "#6B7280";
-
-              return (
-                <Cell
-                  key={index}
-                  fill={fill}
-                />
-              );
-            })}
-
-            <LabelList
-              dataKey="value"
-              position="top"
-              style={{
-                fontSize: 12,
-                fill: "#374151",
-                fontWeight: 600
-              }}
-            />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  )}
-</div>
+                    <LabelList dataKey="value" position="top" />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
 
       </div>
     </div>

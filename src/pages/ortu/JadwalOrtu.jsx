@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   User,
   BookOpen,
   FileText,
   Clock3,
   ChevronRight,
+  CalendarDays,
 } from "lucide-react";
 import api from "../../lib/axios";
 
@@ -17,10 +18,12 @@ const JadwalOrtu = () => {
 
   const [jadwal, setJadwal] = useState({
     pelajaran: {},
-    ujian: {},
+    ujian: [],
   });
 
   const [loading, setLoading] = useState(true);
+
+  const requestRef = useRef(0);
 
   /* ================= LOAD ANAK ================= */
   const loadAnak = async () => {
@@ -31,7 +34,7 @@ const JadwalOrtu = () => {
       setStudents(data);
 
       if (data.length > 0) {
-        setSelected(data[0]);
+        setSelected((prev) => prev || data[0]);
       }
     } catch (err) {
       console.log(err);
@@ -39,38 +42,31 @@ const JadwalOrtu = () => {
   };
 
   /* ================= LOAD JADWAL ================= */
-const loadJadwal = async (nis) => {
-  try {
-    setLoading(true);
+  const loadJadwal = async (nis) => {
+    const currentRequest = ++requestRef.current;
 
-    const res = await api.get(`/ortu/jadwal/${nis}`);
+    try {
+      setLoading(true);
 
-    console.log("DATA JADWAL:");
-    console.log(res.data);
+      const res = await api.get(`/ortu/jadwal/${nis}`);
 
-    setTimeout(() => {
-      setJadwal(
-        res.data || {
-          pelajaran: {},
-          ujian: {},
-        }
-      );
+      // cegah response lama overwrite response baru
+      if (currentRequest !== requestRef.current) return;
 
-      setLoading(false);
-    }, 350);
+      const hasil = res.data || {};
 
-  } catch (err) {
-    console.log("ERROR JADWAL:");
-    console.log(err);
-
-    setJadwal({
-      pelajaran: {},
-      ujian: {},
-    });
-
-    setLoading(false);
-  }
-};
+      setJadwal({
+        pelajaran: hasil.pelajaran || {},
+        ujian: Array.isArray(hasil.ujian) ? hasil.ujian : [],
+      });
+    } catch (err) {
+      console.log("ERROR JADWAL:", err);
+    } finally {
+      if (currentRequest === requestRef.current) {
+        setLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
     loadAnak();
@@ -80,7 +76,33 @@ const loadJadwal = async (nis) => {
     if (selected?.nis) {
       loadJadwal(selected.nis);
     }
-  }, [selected]);
+  }, [selected?.nis]);
+
+  /* ================= SORT UJIAN ================= */
+  const ujianList = useMemo(() => {
+    if (!Array.isArray(jadwal.ujian)) return [];
+
+    return [...jadwal.ujian].sort((a, b) => {
+      const keyA = `${a.tanggal || ""} ${(a.jam || "").split(" - ")[0]}`;
+      const keyB = `${b.tanggal || ""} ${(b.jam || "").split(" - ")[0]}`;
+      return keyA.localeCompare(keyB);
+    });
+  }, [jadwal.ujian]);
+
+  const formatTanggal = (tgl) => {
+    if (!tgl) return "-";
+
+    try {
+      return new Date(`${tgl}T12:00:00`).toLocaleDateString("id-ID", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
+    } catch {
+      return tgl;
+    }
+  };
 
   const data =
     tab === "pelajaran"
@@ -90,171 +112,156 @@ const loadJadwal = async (nis) => {
   return (
     <div className="space-y-6">
 
-      {/* ================= PILIH ANAK ================= */}
+      {/* PILIH ANAK */}
       <div className="overflow-x-auto pb-1">
         <div className="flex gap-4 min-w-max">
-
           {students.map((s, i) => (
             <button
               key={i}
               onClick={() => setSelected(s)}
-              className={`
-                min-w-[240px] rounded-2xl border p-4 text-left
-                transition-all duration-200 shadow-sm
-                ${
-                  selected?.nis === s.nis
-                    ? "bg-white border-[#5A3E36] ring-2 ring-[#E8DDD8]"
-                    : "bg-white border-gray-200 hover:border-gray-300"
-                }
-              `}
+              className={`min-w-[240px] rounded-2xl border p-4 text-left transition shadow-sm ${
+                selected?.nis === s.nis
+                  ? "bg-white border-[#5A3E36] ring-2 ring-[#E8DDD8]"
+                  : "bg-white border-gray-200"
+              }`}
             >
               <div className="flex items-center gap-3">
-
-                <div
-                  className={`
-                    w-11 h-11 rounded-xl flex items-center justify-center
-                    ${
-                      selected?.nis === s.nis
-                        ? "bg-[#EEE7E4]"
-                        : "bg-gray-100"
-                    }
-                  `}
-                >
+                <div className="w-11 h-11 rounded-xl bg-[#EEE7E4] flex items-center justify-center">
                   <User className="w-5 h-5 text-[#5A3E36]" />
                 </div>
 
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-800">
-                    {s.nama}
-                  </p>
-
-                  <p className="text-sm text-gray-500">
-                    {s.kelas}
-                  </p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold truncate">{s.nama}</p>
+                  <p className="text-sm text-gray-500 truncate">{s.kelas}</p>
                 </div>
 
                 <ChevronRight className="w-4 h-4 text-gray-400" />
-
               </div>
             </button>
           ))}
-
         </div>
       </div>
 
-      {/* ================= TAB ================= */}
-      <div className="flex gap-3">
-
+      {/* TAB */}
+      <div className="flex gap-3 flex-wrap">
         <button
           onClick={() => setTab("pelajaran")}
-          className={`
-            px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition
-            ${
-              tab === "pelajaran"
-                ? "bg-green-100 text-green-700 border border-green-200"
-                : "bg-white text-gray-600 border border-gray-200"
-            }
-          `}
+          className={`px-4 py-2 rounded-xl font-semibold text-sm ${
+            tab === "pelajaran"
+              ? "bg-green-100 text-green-700"
+              : "bg-white border"
+          }`}
         >
-          <BookOpen className="w-4 h-4" />
+          <BookOpen className="w-4 h-4 inline mr-2" />
           Pelajaran
         </button>
 
         <button
           onClick={() => setTab("ujian")}
-          className={`
-            px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition
-            ${
-              tab === "ujian"
-                ? "bg-red-100 text-red-700 border border-red-200"
-                : "bg-white text-gray-600 border border-gray-200"
-            }
-          `}
+          className={`px-4 py-2 rounded-xl font-semibold text-sm ${
+            tab === "ujian"
+              ? "bg-red-100 text-red-700"
+              : "bg-white border"
+          }`}
         >
-          <FileText className="w-4 h-4" />
+          <FileText className="w-4 h-4 inline mr-2" />
           Ujian
         </button>
-
       </div>
 
-      {/* ================= CONTAINER ================= */}
-      <div className="bg-gray-200 rounded-2xl shadow-inner p-4">
+      {/* CONTENT */}
+      <div className="bg-gray-200 rounded-2xl p-4 relative">
 
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        {loading && (
+          <div className="absolute inset-0 bg-white/40 rounded-2xl z-10" />
+        )}
 
-          {hariList.map((hari) => {
-            const items = data?.[hari] || [];
+        {tab === "pelajaran" ? (
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {hariList.map((hari) => {
+              const items = data?.[hari] || [];
 
-            return (
-              <div
-                key={hari}
-                className="min-w-[285px] bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex-shrink-0"
-              >
-                {/* HEADER */}
-                <div className="mb-4 pb-3 border-b border-gray-100">
-                  <div className="flex justify-between items-center">
-
+              return (
+                <div
+                  key={hari}
+                  className="min-w-[285px] bg-white rounded-2xl p-4"
+                >
+                  <div className="flex justify-between mb-4">
                     <div>
-                      <h3 className="font-semibold text-gray-800">
-                        {hari}
-                      </h3>
-
+                      <h3 className="font-semibold">{hari}</h3>
                       <p className="text-xs text-gray-500">
                         {items.length} Jadwal
                       </p>
                     </div>
 
-                    <div className="w-9 h-9 rounded-xl bg-[#EEE7E4] flex items-center justify-center">
-                      <Clock3 className="w-4 h-4 text-[#5A3E36]" />
-                    </div>
-
+                    <Clock3 className="w-4 h-4 text-[#5A3E36]" />
                   </div>
-                </div>
 
-                {/* CONTENT */}
-                <div className="space-y-3">
-
-                  {loading ? (
-                    <>
-                      <div className="h-20 rounded-xl bg-gray-100 animate-pulse"></div>
-                      <div className="h-20 rounded-xl bg-gray-100 animate-pulse"></div>
-                    </>
-                  ) : items.length > 0 ? (
-                    items.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-xl bg-gray-50 border border-gray-100 p-3 hover:bg-gray-100 transition"
-                      >
-                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-semibold">
-                          <Clock3 className="w-3 h-3" />
-                          {item.jam}
+                  <div className="space-y-3">
+                    {items.length > 0 ? (
+                      items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-xl bg-gray-50 p-3"
+                        >
+                          <p className="text-xs text-[#5A3E36] font-semibold">
+                            {item.jam}
+                          </p>
+                          <p className="font-semibold mt-1">
+                            {item.mapel}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {item.guru}
+                          </p>
                         </div>
-
-                        <p className="mt-2 font-semibold text-sm text-gray-800">
-                          {item.mapel}
-                        </p>
-
-                        <p className="text-xs text-gray-500 mt-1">
-                          {item.guru}
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-xl bg-gray-50 border border-dashed border-gray-200 p-4 text-center">
+                      ))
+                    ) : (
                       <p className="text-sm text-gray-400">
                         Tidak ada jadwal
                       </p>
-                    </div>
-                  )}
-
+                    )}
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {ujianList.length > 0 ? (
+              ujianList.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="bg-white rounded-2xl p-5"
+                >
+                  <p className="text-xs font-semibold text-[#5A3E36] uppercase">
+                    Jadwal Ujian
+                  </p>
+
+                  <h3 className="font-bold mt-1">
+                    {formatTanggal(item.tanggal)}
+                  </h3>
+
+                  <div className="mt-4 text-sm font-semibold text-[#5A3E36]">
+                    {item.jam}
+                  </div>
+
+                  <p className="mt-3 font-semibold">
+                    {item.mapel}
+                  </p>
+
+                  <p className="text-sm text-gray-500">
+                    {item.guru}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full bg-white rounded-2xl p-8 text-center text-gray-400">
+                Tidak ada jadwal ujian
               </div>
-            );
-          })}
-
-        </div>
+            )}
+          </div>
+        )}
       </div>
-
     </div>
   );
 };

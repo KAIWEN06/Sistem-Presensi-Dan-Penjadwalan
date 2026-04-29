@@ -170,7 +170,6 @@ export default function Login() {
 
         <p className="text-sm sm:text-[15px] text-gray-500 leading-relaxed font-medium mb-8 text-center sm:text-left">
           Masuk ke sistem presensi dan penjadwalan
-          sekolah dengan aman dan cepat.
         </p>
 
         {/* FORM */}
