@@ -3,6 +3,7 @@ const router = express.Router();
 const supabase = require("../config/supabase");
 const requireAuth = require("../middleware/auth");
 
+
 const {
   todayManado,
   timeManado,
@@ -74,18 +75,24 @@ router.get("/dashboard/:nis", requireAuth, async (req, res) => {
     /* kelas aktif */
     const { data: kelasRows, error: errKelas } =
       await supabase
-        .from("kelas_siswa")
-        .select("kelas")
-        .eq("nis", nis)
-        .eq("status", "aktif")
-        .order("id", { ascending: false })
-        .limit(1);
+      .from("kelas_siswa")
+      .select("kelas,tahun_id")
+      .eq("nis", nis)
+      .eq("status", "aktif")
+      .order("id", { ascending: false })
+      .limit(1);
 
     if (errKelas) throw errKelas;
 
     const kelasAktif =
       kelasRows?.length > 0
         ? kelasRows[0].kelas
+        : null;
+
+    // FIX: tahunAktif sebelumnya tidak dideklarasikan di sini
+    const tahunAktif =
+      kelasRows?.length > 0
+        ? kelasRows[0].tahun_id
         : null;
 
     if (!kelasAktif) {
@@ -101,15 +108,23 @@ router.get("/dashboard/:nis", requireAuth, async (req, res) => {
       });
     }
 
+    const selectFields = `
+      id_jadwal, mulai, selesai, jenis, tanggal, hari,
+      mapel ( nama ),
+      guru_pengajar:id_guru ( nama )
+    `;
+
     /* jadwal pelajaran hari ini */
     const { data: pelajaranHari, error: errPel } =
       await supabase
         .from("jadwal")
-        .select("*")
+        .select(selectFields)
         .eq("kelas", kelasAktif)
-        .eq("status", "aktif")
+        .eq("tahun_id", tahunAktif)
         .eq("jenis", "pelajaran")
-        .eq("hari", hariIni);
+        .eq("hari", hariIni)
+        .eq("status", "aktif")
+        .order("mulai");
 
     if (errPel) throw errPel;
 
@@ -117,7 +132,7 @@ router.get("/dashboard/:nis", requireAuth, async (req, res) => {
     const { data: ujianHari, error: errUj } =
       await supabase
         .from("jadwal")
-        .select("*")
+        .select(selectFields)
         .eq("kelas", kelasAktif)
         .eq("status", "aktif")
         .eq("jenis", "ujian")
@@ -162,16 +177,10 @@ router.get("/dashboard/:nis", requireAuth, async (req, res) => {
     };
 
     (bulanIni || []).forEach((x) => {
-      const s = (
-        x.status || ""
-      ).toLowerCase();
-
-      if (s === "hadir")
-        ringkasan.Hadir++;
-      else if (s === "izin")
-        ringkasan.Izin++;
-      else if (s === "sakit")
-        ringkasan.Sakit++;
+      const s = (x.status || "").toLowerCase();
+      if (s === "hadir") ringkasan.Hadir++;
+      else if (s === "izin") ringkasan.Izin++;
+      else if (s === "sakit") ringkasan.Sakit++;
       else ringkasan.Alpha++;
     });
 
@@ -186,58 +195,22 @@ router.get("/dashboard/:nis", requireAuth, async (req, res) => {
       );
 
       updateTerakhir =
-        timeManado(
-          sorted[0].created_at
-        ) + " WITA";
+        timeManado(sorted[0].created_at) + " WITA";
     }
 
-    /* ambil mapel & guru */
-    const hasil = [];
+    /* susun hasil — gunakan data join, tidak perlu loop query lagi */
+    const hasil = jadwalHari.map((j) => {
+      const absen = (absenHari || []).find(
+        (a) => a.id_jadwal === j.id_jadwal
+      );
 
-    for (const j of jadwalHari) {
-      let namaMapel = "-";
-      let namaGuru = "-";
-
-      const { data: mapel } =
-        await supabase
-          .from("mapel")
-          .select("nama")
-          .eq("id_mapel", j.id_mapel)
-          .limit(1);
-
-      if (mapel?.length) {
-        namaMapel =
-          mapel[0].nama;
-      }
-
-      const { data: guru } =
-        await supabase
-          .from("guru")
-          .select("nama")
-          .eq("id_guru", j.id_guru)
-          .limit(1);
-
-      if (guru?.length) {
-        namaGuru =
-          guru[0].nama;
-      }
-
-      const absen =
-        (absenHari || []).find(
-          (a) =>
-            a.id_jadwal ===
-            j.id_jadwal
-        );
-
-      hasil.push({
-        mapel: namaMapel,
-        guru: namaGuru,
+      return {
+        mapel: j.mapel?.nama || "-",
+        guru: j.guru_pengajar?.nama || "-",
         jam: `${String(j.mulai).slice(0, 5)} - ${String(j.selesai).slice(0, 5)}`,
-        status:
-          absen?.status ||
-          "Belum",
-      });
-    }
+        status: absen?.status || "Belum",
+      };
+    });
 
     res.json({
       hariIni: hasil,
@@ -258,15 +231,16 @@ router.get("/jadwal/:nis", requireAuth, async (req, res) => {
   try {
     const { nis } = req.params;
 
-    const today = todayManado();
-    const hariIni = dayNameManado();
-
+    /* ===============================
+       AMBIL KELAS AKTIF SISWA
+    =============================== */
     const { data: kelasRows, error: errKelas } =
       await supabase
         .from("kelas_siswa")
-        .select("kelas")
+        .select("kelas,tahun_id")
         .eq("nis", nis)
         .eq("status", "aktif")
+        .order("id", { ascending: false })
         .limit(1);
 
     if (errKelas) throw errKelas;
@@ -276,44 +250,74 @@ router.get("/jadwal/:nis", requireAuth, async (req, res) => {
         ? kelasRows[0].kelas
         : null;
 
+    const tahunAktif =
+      kelasRows?.length > 0
+        ? kelasRows[0].tahun_id
+        : null;
+
     if (!kelasAktif) {
       return res.json({
         pelajaran: {},
-        ujian: {},
+        ujian: [],
       });
     }
 
+    /* ===============================
+       AMBIL DATA JADWAL TANPA JOIN
+    =============================== */
     const { data: rows, error } =
       await supabase
         .from("jadwal")
-        .select("*")
+        .select(`
+          id_jadwal,
+          hari,
+          mulai,
+          selesai,
+          jenis,
+          tanggal,
+          id_mapel,
+          id_guru,
+          status,
+          tahun_id
+        `)
         .eq("kelas", kelasAktif)
         .eq("status", "aktif")
-        .order("mulai");
+        .order("tanggal", { ascending: true })
+        .order("mulai", { ascending: true });
 
     if (error) throw error;
 
-    const hariList = [
-      "Senin",
-      "Selasa",
-      "Rabu",
-      "Kamis",
-      "Jumat",
-      "Sabtu",
-    ];
+    console.log("[JADWAL] kelas:", kelasAktif);
+    console.log("[JADWAL] tahun:", tahunAktif);
+    console.log("[JADWAL] total rows:", rows?.length);
 
-    const pelajaran = {};
-    const ujian = {};
+      /* ===============================
+        INIT DATA
+      =============================== */
+      const hariList = [
+        "Senin",
+        "Selasa",
+        "Rabu",
+        "Kamis",
+        "Jumat",
+        "Sabtu",
+      ];
 
-    hariList.forEach((h) => {
-      pelajaran[h] = [];
-      ujian[h] = [];
-    });
+      const pelajaran = {};
+      const ujian = [];
 
+      hariList.forEach((h) => {
+        pelajaran[h] = [];
+      });
+
+    /* ===============================
+       LOOP DATA
+    =============================== */
     for (const j of rows || []) {
       let namaMapel = "-";
       let namaGuru = "-";
 
+      /* MAPEL */
       const { data: mapel } =
         await supabase
           .from("mapel")
@@ -321,11 +325,11 @@ router.get("/jadwal/:nis", requireAuth, async (req, res) => {
           .eq("id_mapel", j.id_mapel)
           .limit(1);
 
-      if (mapel?.length) {
-        namaMapel =
-          mapel[0].nama;
+      if (mapel?.length > 0) {
+        namaMapel = mapel[0].nama;
       }
 
+      /* GURU */
       const { data: guru } =
         await supabase
           .from("guru")
@@ -333,9 +337,8 @@ router.get("/jadwal/:nis", requireAuth, async (req, res) => {
           .eq("id_guru", j.id_guru)
           .limit(1);
 
-      if (guru?.length) {
-        namaGuru =
-          guru[0].nama;
+      if (guru?.length > 0) {
+        namaGuru = guru[0].nama;
       }
 
       const item = {
@@ -344,47 +347,60 @@ router.get("/jadwal/:nis", requireAuth, async (req, res) => {
         guru: namaGuru,
       };
 
-      /* ujian */
-      if (
-        (j.jenis || "").toLowerCase() ===
-        "ujian"
-      ) {
-        if (j.tanggal === today) {
-          if (!ujian[hariIni]) {
-            ujian[hariIni] = [];
-          }
+      const jenis =
+        String(j.jenis || "")
+          .trim()
+          .toLowerCase();
 
-          ujian[hariIni].push(
-            item
-          );
-        } else if (
-          j.hari &&
-          ujian[j.hari]
-        ) {
-          ujian[j.hari].push(
-            item
-          );
-        }
+      /* ===============================
+         UJIAN
+      =============================== */
+      if (
+        jenis.includes("ujian")
+      ) {
+        ujian.push({
+          tanggal: j.tanggal,
+          jam: item.jam,
+          mapel: item.mapel,
+          guru: item.guru,
+        });
+
+        continue;
       }
 
-      /* pelajaran */
-      else {
+      /* ===============================
+         PELAJARAN (TAHUN AKTIF)
+      =============================== */
+      if (
+        jenis === "pelajaran" &&
+        String(j.tahun_id) ===
+          String(tahunAktif)
+      ) {
         if (
           j.hari &&
           pelajaran[j.hari]
         ) {
-          pelajaran[j.hari].push(
-            item
-          );
+          pelajaran[j.hari].push(item);
         }
       }
     }
 
+    console.log("[JADWAL] ujian:", ujian.length);
+
+    /* ===============================
+       RESPONSE
+    =============================== */
     res.json({
       pelajaran,
       ujian,
     });
+
   } catch (err) {
+    console.error(
+      "[JADWAL ERROR]",
+      err.message
+    );
+
     res.status(500).json({
       error: err.message,
     });
