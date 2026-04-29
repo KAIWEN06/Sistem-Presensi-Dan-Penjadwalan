@@ -17,13 +17,14 @@ function capitalize(text = "") {
    AMBIL DATA GURU LOGIN
 ====================================== */
 async function getGuruLogin(userId) {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id_guru,nama")
-    .eq("id", userId)
-    .single();
+  const { data, error } =
+    await supabase
+      .from("guru")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
 
-  if (error || !data?.id_guru) {
+  if (error || !data) {
     throw new Error("Guru tidak ditemukan");
   }
 
@@ -350,13 +351,27 @@ router.get("/dashboard", requireAuth, async (req, res) => {
 
     const today = todayManado();
 
-    const localTomorrow = new Date();
+    const localTomorrow = new Date(`${today}T12:00:00`);
     localTomorrow.setDate(localTomorrow.getDate() + 1);
 
     const tomorrow = todayManado(localTomorrow);
 
     const hariIniStr = capitalize(dayNameManado());
     const besokStr = capitalize(dayNameManado(localTomorrow));
+
+    /* ==========================
+       TAHUN AJARAN AKTIF
+    ========================== */
+    const {
+      data: tahunAktif,
+      error: errTahun,
+    } = await supabase
+      .from("tahun_ajaran")
+      .select("id")
+      .eq("aktif", true)
+      .single();
+
+    if (errTahun) throw errTahun;
 
     /* ==========================
        HARI INI - PELAJARAN
@@ -378,6 +393,7 @@ router.get("/dashboard", requireAuth, async (req, res) => {
       .eq("jenis", "pelajaran")
       .eq("hari", hariIniStr)
       .eq("status", "aktif")
+      .eq("tahun_id", tahunAktif.id)
       .order("mulai", {
         ascending: true,
       });
@@ -404,6 +420,7 @@ router.get("/dashboard", requireAuth, async (req, res) => {
       .eq("jenis", "ujian")
       .eq("tanggal", today)
       .eq("status", "aktif")
+      .eq("tahun_id", tahunAktif.id)
       .order("mulai", {
         ascending: true,
       });
@@ -430,6 +447,7 @@ router.get("/dashboard", requireAuth, async (req, res) => {
       .eq("jenis", "pelajaran")
       .eq("hari", besokStr)
       .eq("status", "aktif")
+      .eq("tahun_id", tahunAktif.id)
       .order("mulai", {
         ascending: true,
       });
@@ -456,6 +474,7 @@ router.get("/dashboard", requireAuth, async (req, res) => {
       .eq("jenis", "ujian")
       .eq("tanggal", tomorrow)
       .eq("status", "aktif")
+      .eq("tahun_id", tahunAktif.id)
       .order("mulai", {
         ascending: true,
       });
@@ -586,51 +605,77 @@ router.get("/kelas-ajar", requireAuth, async (req, res) => {
       });
     }
 
-    const hariStr = capitalize(dayNameManado(tanggal));
+    /* ==========================
+       TAHUN AJARAN AKTIF
+    ========================== */
+    const {
+      data: tahunAktif,
+      error: errTahun,
+    } = await supabase
+      .from("tahun_ajaran")
+      .select("id")
+      .eq("aktif", true)
+      .single();
+
+    if (errTahun) throw errTahun;
+
+    const hariStr =
+      capitalize(
+        dayNameManado(tanggal)
+      );
+
     /* ==========================
        JADWAL PELAJARAN
+       SAMA SEPERTI KELOLA ADMIN
     ========================== */
-    const { data: pelajaran, error: err1 } =
-      await supabase
-        .from("jadwal")
-        .select(`
-          id_jadwal,
-          kelas,
-          mulai,
-          selesai,
-          id_mapel,
-          mapel:id_mapel(nama)
-        `)
-        .eq("id_guru", guru.id_guru)
-        .eq("jenis", "pelajaran")
-        .eq("hari", hariStr)
-        .eq("status", "aktif");
+    const {
+      data: pelajaran,
+      error: err1,
+    } = await supabase
+      .from("jadwal")
+      .select(`
+        id_jadwal,
+        kelas,
+        mulai,
+        selesai,
+        id_mapel,
+        mapel:id_mapel(nama)
+      `)
+      .eq("id_guru", guru.id_guru)
+      .eq("jenis", "pelajaran")
+      .eq("hari", hariStr)
+      .eq("status", "aktif")
+      .eq("tahun_id", tahunAktif.id);
 
     if (err1) throw err1;
 
     /* ==========================
        JADWAL UJIAN
+       SAMA SEPERTI KELOLA ADMIN
     ========================== */
-    const { data: ujian, error: err2 } =
-      await supabase
-        .from("jadwal")
-        .select(`
-          id_jadwal,
-          kelas,
-          mulai,
-          selesai,
-          id_mapel,
-          mapel:id_mapel(nama)
-        `)
-        .eq("id_guru", guru.id_guru)
-        .eq("jenis", "ujian")
-        .eq("tanggal", tanggal)
-        .eq("status", "aktif");
+    const {
+      data: ujian,
+      error: err2,
+    } = await supabase
+      .from("jadwal")
+      .select(`
+        id_jadwal,
+        kelas,
+        mulai,
+        selesai,
+        id_mapel,
+        mapel:id_mapel(nama)
+      `)
+      .eq("id_guru", guru.id_guru)
+      .eq("jenis", "ujian")
+      .eq("tanggal", tanggal)
+      .eq("status", "aktif")
+      .eq("tahun_id", tahunAktif.id);
 
     if (err2) throw err2;
 
     /* ==========================
-       GABUNGKAN
+       GABUNGKAN + SORT
     ========================== */
     const semua = [
       ...(pelajaran || []),
@@ -643,33 +688,35 @@ router.get("/kelas-ajar", requireAuth, async (req, res) => {
       )
     );
 
-    /* ==========================
-       TANGGAL HARI INI WIB
-    ========================== */
     const today = todayManado();
 
     /* ==========================
-       FORMAT + STATUS
+       FORMAT + STATUS PRESENSI
     ========================== */
     const hasil = [];
 
     for (const j of semua) {
-      const { data: cekAbsen } =
-        await supabase
-          .from("absensi")
-          .select("id")
-          .eq("id_jadwal", j.id_jadwal)
-          .eq("tanggal", tanggal)
-          .limit(1);
+      const {
+        data: cekAbsen,
+      } = await supabase
+        .from("absensi")
+        .select("id")
+        .eq("id_jadwal", j.id_jadwal)
+        .eq("tanggal", tanggal)
+        .limit(1);
 
-      let statusPresensi = "belum";
+      let statusPresensi =
+        "belum";
 
       if (
         cekAbsen &&
         cekAbsen.length > 0
       ) {
-        statusPresensi = "sudah";
-      } else if (tanggal < today) {
+        statusPresensi =
+          "sudah";
+      } else if (
+        tanggal < today
+      ) {
         statusPresensi =
           "terlambat";
       }
@@ -695,6 +742,7 @@ router.get("/kelas-ajar", requireAuth, async (req, res) => {
     }
 
     res.json(hasil);
+
   } catch (err) {
     console.log(
       "KELAS AJAR ERROR:",
@@ -916,9 +964,26 @@ router.get("/jadwal", requireAuth, async (req, res) => {
     const today = todayManado();
 
     /* ==========================
+       TAHUN AJARAN AKTIF
+    ========================== */
+    const {
+      data: tahunAktif,
+      error: errTahun,
+    } = await supabase
+      .from("tahun_ajaran")
+      .select("id")
+      .eq("aktif", true)
+      .single();
+
+    if (errTahun) throw errTahun;
+
+    /* ==========================
        JADWAL PELAJARAN
     ========================== */
-    const { data: pelajaran, error: err1 } = await supabase
+    const {
+      data: pelajaran,
+      error: err1,
+    } = await supabase
       .from("jadwal")
       .select(`
         id_jadwal,
@@ -930,7 +995,11 @@ router.get("/jadwal", requireAuth, async (req, res) => {
       `)
       .eq("id_guru", guru.id_guru)
       .eq("jenis", "pelajaran")
-      .eq("status", "aktif");
+      .eq("status", "aktif")
+      .eq("tahun_id", tahunAktif.id)
+      .order("mulai", {
+        ascending: true,
+      });
 
     if (err1) throw err1;
 
@@ -940,14 +1009,14 @@ router.get("/jadwal", requireAuth, async (req, res) => {
       Rabu: [],
       Kamis: [],
       Jumat: [],
-      Sabtu: []
+      Sabtu: [],
     };
 
     (pelajaran || []).forEach((j) => {
       if (hasilPelajaran[j.hari]) {
         hasilPelajaran[j.hari].push({
-          jam: `${String(j.mulai).slice(0,5)} - ${String(j.selesai).slice(0,5)}`,
-          mapel: `Kelas ${j.kelas} - ${j.mapel?.nama || "-"}`
+          jam: `${String(j.mulai).slice(0, 5)} - ${String(j.selesai).slice(0, 5)}`,
+          mapel: `Kelas ${j.kelas} - ${j.mapel?.nama || "-"}`,
         });
       }
     });
@@ -955,7 +1024,10 @@ router.get("/jadwal", requireAuth, async (req, res) => {
     /* ==========================
        JADWAL UJIAN
     ========================== */
-    const { data: ujian, error: err2 } = await supabase
+    const {
+      data: ujian,
+      error: err2,
+    } = await supabase
       .from("jadwal")
       .select(`
         id_jadwal,
@@ -968,25 +1040,32 @@ router.get("/jadwal", requireAuth, async (req, res) => {
       .eq("id_guru", guru.id_guru)
       .eq("jenis", "ujian")
       .eq("status", "aktif")
+      .eq("tahun_id", tahunAktif.id)
       .gte("tanggal", today)
-      .order("tanggal", { ascending: true })
-      .order("mulai", { ascending: true });
+      .order("tanggal", {
+        ascending: true,
+      })
+      .order("mulai", {
+        ascending: true,
+      });
 
     if (err2) throw err2;
 
     const hasilUjian = (ujian || []).map((j) => ({
       tanggal: j.tanggal,
-      jam: `${String(j.mulai).slice(0,5)} - ${String(j.selesai).slice(0,5)}`,
-      mapel: `Kelas ${j.kelas} - ${j.mapel?.nama || "-"}`
+      jam: `${String(j.mulai).slice(0, 5)} - ${String(j.selesai).slice(0, 5)}`,
+      mapel: `Kelas ${j.kelas} - ${j.mapel?.nama || "-"}`,
     }));
 
     res.json({
       pelajaran: hasilPelajaran,
-      ujian: hasilUjian
+      ujian: hasilUjian,
     });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message,
+    });
   }
 });
 
