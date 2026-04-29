@@ -1261,6 +1261,106 @@ router.delete("/mapel/:id", requireAuth, async (req, res) => {
    JADWAL
 ===================================================== */
 
+async function autoUpdateStatusUjian() {
+  try {
+    const now = new Date();
+
+    const today =
+      now.toLocaleDateString(
+        "en-CA",
+        {
+          timeZone:
+            "Asia/Makassar",
+        }
+      );
+
+    const jamNow =
+      now.toLocaleTimeString(
+        "en-GB",
+        {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone:
+            "Asia/Makassar",
+        }
+      );
+
+    const { data, error } =
+      await supabase
+        .from("jadwal")
+        .select(
+          "id_jadwal,tanggal,selesai,status"
+        )
+        .eq(
+          "jenis",
+          "ujian"
+        )
+        .eq(
+          "status",
+          "aktif"
+        );
+
+    if (error) throw error;
+
+    const selesaiIds =
+      (data || [])
+        .filter((j) => {
+          if (
+            !j.tanggal
+          )
+            return false;
+
+          if (
+            j.tanggal <
+            today
+          )
+            return true;
+
+          if (
+            j.tanggal ===
+              today &&
+            String(
+              j.selesai
+            ).slice(
+              0,
+              5
+            ) <=
+              jamNow
+          ) {
+            return true;
+          }
+
+          return false;
+        })
+        .map(
+          (j) =>
+            j.id_jadwal
+        );
+
+    if (
+      selesaiIds.length >
+      0
+    ) {
+      await supabase
+        .from("jadwal")
+        .update({
+          status:
+            "selesai",
+        })
+        .in(
+          "id_jadwal",
+          selesaiIds
+        );
+    }
+  } catch (err) {
+    console.log(
+      "AUTO STATUS ERROR:",
+      err
+    );
+  }
+}
+
 router.get("/jadwal", requireAuth, async (req, res) => {
   try {
     /* ambil tahun aktif */
@@ -1349,6 +1449,66 @@ router.post("/jadwal", requireAuth, async (req, res) => {
 
     if (errTahun || !tahunAktif) throw errTahun;
 
+    /* ===============================
+       CEK BENTROK JADWAL
+    =============================== */
+    const { data: semuaJadwal, error: errJadwal } =
+      await supabase
+        .from("jadwal")
+        .select("*")
+        .eq("tahun_id", tahunAktif.id)
+        .eq("status", "aktif");
+
+    if (errJadwal) throw errJadwal;
+
+    const bentrok = (semuaJadwal || []).find((j) => {
+      const waktuSama =
+        jenis === "pelajaran"
+          ? (
+              j.jenis === "pelajaran" &&
+              j.hari === hari
+            )
+          : (
+              j.jenis === "ujian" &&
+              j.tanggal === tanggal
+            );
+
+      if (!waktuSama) return false;
+
+      const jamBentrok =
+        mulai < j.selesai &&
+        selesai > j.mulai;
+
+      if (!jamBentrok) return false;
+
+      const kelasBentrok =
+        Number(j.kelas) === Number(kelas);
+
+      const guruBentrok =
+        guru &&
+        (
+          j.id_guru === guru ||
+          j.pengawas_id === guru
+        );
+
+      return kelasBentrok || guruBentrok;
+    });
+
+    if (bentrok) {
+      if (Number(bentrok.kelas) === Number(kelas)) {
+        return res.status(400).json({
+          error: "Kelas bentrok dengan jadwal lain di jam yang sama"
+        });
+      }
+
+      return res.status(400).json({
+        error: "Guru bentrok dengan jadwal lain di jam yang sama"
+      });
+    }
+
+    /* ===============================
+       INSERT DATA
+    =============================== */
     const idBaru = "J" + Date.now();
 
     const { error } = await supabase
@@ -1396,7 +1556,8 @@ router.put("/jadwal/:id", requireAuth, async (req, res) => {
       hari,
       tanggal,
       mulai,
-      selesai
+      selesai,
+      status
     } = req.body;
 
     const { error } = await supabase
@@ -1491,6 +1652,8 @@ router.get("/jadwal/hari-ini", async (req, res) => {
       "Sabtu"
     ];
 
+    await autoUpdateStatusUjian();
+
     const now = new Date();
     const hariIni = hariList[now.getDay()];
     const tgl = now.toISOString().slice(0, 10);
@@ -1550,6 +1713,8 @@ router.get("/jadwal/hari-ini", async (req, res) => {
     res.json(hasil);
 
   } catch (err) {
+    console.log("hari ini:", err);
+
     res.status(500).json({
       error: err.message
     });
@@ -1562,6 +1727,7 @@ router.get("/jadwal/hari-ini", async (req, res) => {
 
 router.get("/jadwal/minggu-ini", async (req, res) => {
   try {
+    await autoUpdateStatusUjian();
     const now = new Date();
 
     const day = now.getDay();
@@ -1654,6 +1820,8 @@ router.get("/jadwal/minggu-ini", async (req, res) => {
     res.json(hasil);
 
   } catch (err) {
+    console.log("minggu ini:", err);
+
     res.status(500).json({
       error: err.message
     });

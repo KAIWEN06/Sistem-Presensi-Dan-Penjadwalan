@@ -4,6 +4,7 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Power,
   X,
   AlertCircle,
   Loader2,
@@ -46,6 +47,14 @@ const getHariIndonesia = (tanggal) => {
   return hari[dt.getDay()];
 };
 
+const statusTabs = [
+  { key: "semua", label: "Semua" },
+  { key: "aktif", label: "Aktif" },
+  { key: "selesai", label: "Selesai" },
+  { key: "dibatalkan", label: "Dibatalkan" },
+  { key: "nonaktif", label: "Nonaktif" },
+];
+
 export default function AdminKelolaJadwal() {
   const [jadwalData, setJadwalData] = useState([]);
   const [kelasList, setKelasList] = useState([]);
@@ -56,6 +65,7 @@ export default function AdminKelolaJadwal() {
   const [search, setSearch] = useState("");
   const [filterJenis, setFilterJenis] = useState("semua");
   const [filterKelas, setFilterKelas] = useState("semua");
+  const [activeTab, setActiveTab] = useState("semua");
 
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -64,16 +74,17 @@ export default function AdminKelolaJadwal() {
   const [selectedDelete, setSelectedDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const emptyForm = {
-    jenis: "pelajaran",
-    kelas: "",
-    mapel: "",
-    guru: "",
-    hari: "",
-    tanggal: "",
-    mulai: "",
-    selesai: "",
-  };
+const emptyForm = {
+  jenis: "pelajaran",
+  kelas: "",
+  mapel: "",
+  guru: "",
+  hari: "",
+  tanggal: "",
+  mulai: "",
+  selesai: "",
+  status: "aktif",
+};
 
   const [form, setForm] = useState(emptyForm);
 
@@ -186,6 +197,39 @@ export default function AdminKelolaJadwal() {
       setDeleteLoading(false);
     }
   };
+  
+const handleToggleStatus = async (
+  jadwal
+) => {
+  const newStatus =
+    jadwal.status === "aktif"
+      ? "nonaktif"
+      : "aktif";
+
+  try {
+    const id = toast.loading(
+      "Mengubah status..."
+    );
+
+    await api.patch(
+      `/admin/jadwal/${jadwal.id}/status`,
+      {
+        status: newStatus,
+      }
+    );
+
+    toast.success(
+      "Status berhasil diubah",
+      { id }
+    );
+
+    fetchJadwal();
+  } catch {
+    toast.error(
+      "Gagal mengubah status"
+    );
+  }
+};  
 
   const openTambah = () => {
     setEditId(null);
@@ -193,46 +237,47 @@ export default function AdminKelolaJadwal() {
     setShowModal(true);
   };
 
-  const openEdit = (item) => {
-    setEditId(item.id);
+const openEdit = (item) => {
+  setEditId(item.id);
 
-    setForm({
-      jenis: item.tipe || "pelajaran",
-      kelas: item.kelas_id || item.kelas || "",
-      mapel: item.mapel_id || item.mapel || "",
-      guru: item.guru_id || item.guru || "",
-      hari: item.hari || "",
-      tanggal: item.tanggal || "",
-      mulai: item.mulai || "",
-      selesai: item.selesai || "",
-    });
-
-    setShowModal(true);
-  };
-
-  const filtered = jadwalData.filter((item) => {
-    const matchSearch =
-      (item.mapel?.toLowerCase() || "").includes(
-        search.toLowerCase()
-      ) ||
-      (item.guru?.toLowerCase() || "").includes(
-        search.toLowerCase()
-      );
-
-    const matchJenis =
-      filterJenis === "semua" ||
-      item.tipe === filterJenis;
-
-    const matchKelas =
-      filterKelas === "semua" ||
-      String(item.kelas) === String(filterKelas);
-
-    return (
-      matchSearch &&
-      matchJenis &&
-      matchKelas
-    );
+  setForm({
+    jenis: item.tipe || "pelajaran",
+    kelas: item.kelas_id || item.kelas || "",
+    mapel: item.mapel_id || item.mapel || "",
+    guru: item.guru_id || item.guru || "",
+    hari: item.hari || "",
+    tanggal: item.tanggal || "",
+    mulai: item.mulai || "",
+    selesai: item.selesai || "",
+    status: item.status || "aktif",
   });
+
+  setShowModal(true);
+};
+
+const filtered = jadwalData.filter((item) => {
+  const matchSearch =
+    (item.mapel?.toLowerCase() || "").includes(search.toLowerCase()) ||
+    (item.guru?.toLowerCase() || "").includes(search.toLowerCase());
+
+  const matchJenis =
+    filterJenis === "semua" || item.tipe === filterJenis;
+
+  const matchKelas =
+    filterKelas === "semua" ||
+    String(item.kelas) === String(filterKelas);
+
+  const matchStatus =
+    activeTab === "semua" ||
+    (item.status || "").toLowerCase().trim() === activeTab;
+
+  return (
+    matchSearch &&
+    matchJenis &&
+    matchKelas &&
+    matchStatus
+  );
+});
 
   return (
     <section className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
@@ -248,6 +293,34 @@ export default function AdminKelolaJadwal() {
           </button>
         </div>
       </div>
+
+      <div className="rounded-3xl bg-white border border-gray-100 shadow-sm px-4 sm:px-5 py-3">
+  <div className="overflow-x-auto">
+    <div className="flex gap-5 min-w-max">
+      {statusTabs.map((tab) => {
+        const active = activeTab === tab.key;
+
+        return (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`relative pb-2 text-sm font-bold whitespace-nowrap transition ${
+              active
+                ? "text-[#715445]"
+                : "text-gray-400 hover:text-gray-700"
+            }`}
+          >
+            {tab.label}
+
+            {active && (
+              <span className="absolute left-0 right-0 -bottom-[1px] h-[2px] rounded-full bg-[#715445]" />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+</div>
 
       {/* FILTER */}
       <div className="rounded-3xl bg-white border border-gray-100 shadow-sm p-4 sm:p-5">
@@ -311,23 +384,24 @@ export default function AdminKelolaJadwal() {
       <div className="hidden lg:block rounded-3xl bg-white border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px]">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <Th>Jenis</Th>
-                <Th>Hari / Tanggal</Th>
-                <Th center>Waktu</Th>
-                <Th>Kelas</Th>
-                <Th>Mapel</Th>
-                <Th>Guru</Th>
-                <Th right>Aksi</Th>
-              </tr>
-            </thead>
+                <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                    <Th>Status</Th>
+                    <Th>Jenis</Th>
+                    <Th>Hari / Tanggal</Th>
+                    <Th center>Waktu</Th>
+                    <Th>Kelas</Th>
+                    <Th>Mapel</Th>
+                    <Th>Guru</Th>
+                    <Th right>Aksi</Th>
+                </tr>
+                </thead>
 
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
                   <td
-                    colSpan="7"
+                    colSpan="8"
                     className="py-16"
                   >
                     <Loader2 className="mx-auto animate-spin text-gray-300" />
@@ -336,66 +410,93 @@ export default function AdminKelolaJadwal() {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="7"
+                    colSpan="8"
                     className="py-16 text-center text-gray-400"
                   >
                     Tidak ada jadwal
                   </td>
                 </tr>
               ) : (
-                filtered.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-gray-50"
-                  >
-                    <Td>
-                      <JenisBadge
-                        jenis={item.tipe}
-                      />
-                    </Td>
+filtered.map((item) => (
+  <tr
+    key={item.id}
+    className="hover:bg-gray-50"
+  >
+    {/* STATUS */}
+    <Td>
+      <StatusBadge
+        status={item.status}
+      />
+    </Td>
 
-                    <Td>
-                      {item.tipe === "ujian"
-                        ? item.tanggal
-                        : item.hari}
-                    </Td>
+    {/* JENIS */}
+    <Td>
+      <JenisBadge
+        jenis={item.tipe}
+      />
+    </Td>
 
-                    <Td center>
-                      {item.rentangWaktu}
-                    </Td>
+    {/* HARI / TANGGAL */}
+    <Td>
+      {item.tipe === "ujian"
+        ? item.tanggal
+        : item.hari}
+    </Td>
 
-                    <Td>{item.kelas}</Td>
+    {/* WAKTU */}
+    <Td center>
+      {item.rentangWaktu}
+    </Td>
 
-                    <Td bold>
-                      {item.mapel}
-                    </Td>
+    {/* KELAS */}
+    <Td>{item.kelas}</Td>
 
-                    <Td>{item.guru}</Td>
+    {/* MAPEL */}
+    <Td bold>
+      {item.mapel}
+    </Td>
 
-                    <Td right>
-                      <div className="flex items-center justify-end gap-2">
-                        <ActionBtn
-                          onClick={() =>
-                            openEdit(item)
-                          }
-                        >
-                          <Pencil size={15} />
-                        </ActionBtn>
+    {/* GURU */}
+    <Td>{item.guru}</Td>
 
-                        <ActionBtn
-                          danger
-                          onClick={() =>
-                            handleHapus(
-                              item.id
-                            )
-                          }
-                        >
-                          <Trash2 size={15} />
-                        </ActionBtn>
-                      </div>
-                    </Td>
-                  </tr>
-                ))
+    {/* AKSI */}
+    <Td right>
+      <div className="flex items-center justify-end gap-2">
+        <ActionBtn
+          onClick={() =>
+            openEdit(item)
+          }
+        >
+          <Pencil size={15} />
+        </ActionBtn>
+
+        <ActionBtn
+          onClick={() =>
+            handleToggleStatus(
+              item
+            )
+          }
+        >
+          <Power size={15} />
+        </ActionBtn>
+
+        {item.status !==
+          "aktif" && (
+          <ActionBtn
+            danger
+            onClick={() =>
+              handleHapus(
+                item.id
+              )
+            }
+          >
+            <Trash2 size={15} />
+          </ActionBtn>
+        )}
+      </div>
+    </Td>
+  </tr>
+))
               )}
             </tbody>
           </table>
@@ -444,25 +545,42 @@ export default function AdminKelolaJadwal() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() =>
+                    onClick={() =>
                     openEdit(item)
-                  }
-                  className="inline-flex items-center justify-center gap-2 min-h-[46px] rounded-2xl bg-gray-100 font-bold"
+                    }
+                    className="min-h-[46px] rounded-2xl bg-gray-100 font-bold"
                 >
-                  Edit
+                    Edit
                 </button>
 
                 <button
-                  onClick={() =>
-                    handleHapus(item.id)
-                  }
-                  className="inline-flex items-center justify-center gap-2 min-h-[46px] rounded-2xl bg-rose-500 text-white text-sm font-bold"
+                    onClick={() =>
+                    handleToggleStatus(item)
+                    }
+                    className={`min-h-[46px] rounded-2xl text-sm font-bold ${
+                    item.status === "aktif"
+                        ? "bg-rose-500 text-white"
+                        : "bg-emerald-500 text-white"
+                    }`}
                 >
-                  Hapus
+                    {item.status === "aktif"
+                    ? "Nonaktifkan"
+                    : "Aktifkan"}
                 </button>
-              </div>
+
+                {item.status !== "aktif" && (
+                    <button
+                    onClick={() =>
+                        handleHapus(item.id)
+                    }
+                    className="col-span-2 min-h-[46px] rounded-2xl bg-rose-600 text-white font-bold"
+                    >
+                    Hapus
+                    </button>
+                )}
+                </div>
             </div>
           ))
         )}
@@ -642,6 +760,39 @@ export default function AdminKelolaJadwal() {
                     </SelectField>
                   </Field>
 
+<Field label="Status">
+  <SelectField
+    value={form.status}
+    onChange={(e) =>
+      setForm({
+        ...form,
+        status: e.target.value,
+      })
+    }
+  >
+    <option value="aktif">
+      Aktif
+    </option>
+
+    {form.jenis === "pelajaran" && (
+      <option value="nonaktif">
+        Nonaktif
+      </option>
+    )}
+
+    {form.jenis === "ujian" && (
+      <>
+        <option value="selesai">
+          Selesai
+        </option>
+
+        <option value="dibatalkan">
+          Dibatalkan
+        </option>
+      </>
+    )}
+  </SelectField>
+</Field>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Field
                       label={
@@ -872,6 +1023,37 @@ function JenisBadge({
       }`}
     >
       {jenis}
+    </span>
+  );
+}
+
+function StatusBadge({
+  status,
+}) {
+  const s =
+    (status || "")
+      .toLowerCase()
+      .trim();
+
+  const styles = {
+    aktif:
+      "bg-emerald-50 text-emerald-700",
+    selesai:
+      "bg-blue-50 text-blue-700",
+    dibatalkan:
+      "bg-rose-50 text-rose-700",
+    nonaktif:
+      "bg-gray-100 text-gray-700",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center justify-center h-8 min-w-[88px] px-3 rounded-full text-[11px] font-black uppercase whitespace-nowrap ${
+        styles[s] ||
+        "bg-gray-100 text-gray-700"
+      }`}
+    >
+      {s || "-"}
     </span>
   );
 }

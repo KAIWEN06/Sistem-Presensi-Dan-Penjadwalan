@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../lib/axios";
 import { todayManado } from "../../utils/timezone";
@@ -15,26 +18,28 @@ import {
   FaClock,
 } from "react-icons/fa";
 
-// PREMIUM UI UPGRADE
-// FULL RESPONSIVE ORTU PANEL
-// SAFE REFACTOR
-// NO LOGIC CHANGED
-// MOBILE READY
-// CONSISTENT WITH ADMIN PREMIUM
-
 const KelolaPresensi = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
-  const [search, setSearch] = useState("");
-  const [jadwal, setJadwal] = useState([]);
-  const [tertunda, setTertunda] = useState([]);
-  const [selectedJadwal, setSelectedJadwal] = useState(null);
-  const [dataSiswa, setDataSiswa] = useState([]);
-  const [loadingSiswa, setLoadingSiswa] = useState(false);
-  const [autoDone, setAutoDone] = useState(false);
+  const [search, setSearch] =
+    useState("");
+  const [jadwal, setJadwal] =
+    useState([]);
+  const [tertunda, setTertunda] =
+    useState([]);
+  const [selectedJadwal, setSelectedJadwal] =
+    useState(null);
+  const [dataSiswa, setDataSiswa] =
+    useState([]);
+  const [loadingSiswa, setLoadingSiswa] =
+    useState(false);
+  const [autoDone, setAutoDone] =
+    useState(false);
 
   const defaultTanggal =
-    location.state?.tanggal || todayManado();
+    location.state?.tanggal ||
+    todayManado();
 
   const [tanggal, setTanggal] =
     useState(defaultTanggal);
@@ -58,13 +63,9 @@ const KelolaPresensi = () => {
       const res = await api.get(
         "/guru/presensi-tertunda"
       );
-
       setTertunda(res.data || []);
     } catch (err) {
-      console.error(
-        "Gagal ambil tertunda",
-        err
-      );
+      console.error(err);
     }
   };
 
@@ -75,50 +76,27 @@ const KelolaPresensi = () => {
       );
 
       setJadwal(res.data || []);
-      setSelectedJadwal(null);
-      setDataSiswa([]);
+
+      if (
+        !location.state?.autoSelect &&
+        !autoDone
+      ) {
+        setSelectedJadwal(null);
+        setDataSiswa([]);
+      }
     } catch (err) {
-      console.error(
-        "Gagal ambil jadwal",
-        err
-      );
+      console.error(err);
     }
   };
-
-  /* =========================
-     AUTO PILIH DARI BERANDA
-  ========================= */
-  useEffect(() => {
-    const autoOpen = async () => {
-      if (!jadwal.length) return;
-      if (autoDone) return;
-
-      const targetId =
-        location.state?.autoSelect
-          ?.id_jadwal;
-
-      if (!targetId) return;
-
-      const found = jadwal.find(
-        (j) =>
-          String(j.id_jadwal) ===
-          String(targetId)
-      );
-
-      if (!found) return;
-
-      await handleAbsenSekarang(found);
-      setAutoDone(true);
-    };
-
-    autoOpen();
-  }, [jadwal]);
 
   /* =========================
      LOAD SISWA
   ========================= */
   const handleAbsenSekarang =
-    async (j) => {
+    async (
+      j,
+      customTanggal = tanggal
+    ) => {
       setSelectedJadwal(j);
       setLoadingSiswa(true);
 
@@ -128,20 +106,19 @@ const KelolaPresensi = () => {
 
       try {
         const res = await api.get(
-          `/guru/siswa-kelas/${j.id_jadwal}?tanggal=${tanggal}`
+          `/guru/siswa-kelas/${j.id_jadwal}?tanggal=${customTanggal}`
         );
 
-        setDataSiswa(res.data || []);
+        setDataSiswa(
+          res.data || []
+        );
 
         toast.success(
           "Data siswa berhasil dimuat",
           { id }
         );
       } catch (err) {
-        console.error(
-          "Gagal ambil siswa",
-          err
-        );
+        console.error(err);
 
         toast.error(
           "Gagal memuat data siswa",
@@ -152,12 +129,64 @@ const KelolaPresensi = () => {
       }
     };
 
+  /* =========================
+     AUTO SELECT DASHBOARD
+  ========================= */
+  useEffect(() => {
+    if (!jadwal.length) return;
+    if (autoDone) return;
+
+    const targetId =
+      location.state?.autoSelect
+        ?.id_jadwal;
+
+    if (!targetId) return;
+
+    const found = jadwal.find(
+      (j) =>
+        String(j.id_jadwal) ===
+        String(targetId)
+    );
+
+    if (!found) return;
+
+    const timer =
+      setTimeout(async () => {
+        await handleAbsenSekarang(
+          found,
+          defaultTanggal
+        );
+
+        setAutoDone(true);
+
+        window.scrollTo({
+          top: 500,
+          behavior:
+            "smooth",
+        });
+
+        navigate(
+          location.pathname,
+          {
+            replace: true,
+            state: {},
+          }
+        );
+      }, 250);
+
+    return () =>
+      clearTimeout(timer);
+  }, [jadwal, autoDone]);
+
   const bukaTertunda = (j) => {
     setTanggal(j.tanggal);
     setAutoDone(true);
 
     setTimeout(() => {
-      handleAbsenSekarang(j);
+      handleAbsenSekarang(
+        j,
+        j.tanggal
+      );
     }, 400);
   };
 
@@ -202,10 +231,7 @@ const KelolaPresensi = () => {
         fetchJadwal();
         fetchTertunda();
       } catch (err) {
-        console.error(
-          "Gagal simpan",
-          err
-        );
+        console.error(err);
 
         toast.error(
           "Gagal menyimpan presensi",
@@ -257,7 +283,9 @@ const KelolaPresensi = () => {
     }
   };
 
-  const badgeJadwal = (status) => {
+  const badgeJadwal = (
+    status
+  ) => {
     if (status === "sudah") {
       return (
         <span className="inline-flex items-center justify-center min-h-[32px] px-3 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
@@ -266,7 +294,10 @@ const KelolaPresensi = () => {
       );
     }
 
-    if (status === "terlambat") {
+    if (
+      status ===
+      "terlambat"
+    ) {
       return (
         <span className="inline-flex items-center justify-center min-h-[32px] px-3 rounded-full text-xs font-bold bg-rose-50 text-rose-700">
           Terlambat
@@ -669,9 +700,7 @@ const KelolaPresensi = () => {
       </div>
     </section>
   );
-};
-
-function StatusCard({
+  function StatusCard({
   icon,
   label,
   value,
@@ -699,5 +728,6 @@ function StatusCard({
     </div>
   );
 }
+};
 
 export default KelolaPresensi;
