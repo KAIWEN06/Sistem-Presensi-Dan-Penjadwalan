@@ -1263,88 +1263,70 @@ router.delete("/mapel/:id", requireAuth, async (req, res) => {
 
 router.get("/jadwal", requireAuth, async (req, res) => {
   try {
-    /* ===============================
-       AMBIL TAHUN AJARAN AKTIF
-    =============================== */
-    const { data: tahunAktif, error: errTahun } =
-      await supabase
-        .from("tahun_ajaran")
-        .select("id")
-        .eq("aktif", true)
-        .single();
+    /* ambil tahun aktif */
+    const { data: tahunAktif, error: errTahun } = await supabase
+      .from("tahun_ajaran")
+      .select("id")
+      .eq("aktif", true)
+      .single();
 
     if (errTahun) throw errTahun;
 
-    /* ===============================
-       QUERY JADWAL TAHUN AKTIF
-    =============================== */
-    const { data, error } =
-      await supabase
-        .from("jadwal")
-        .select(`
-          id_jadwal,
-          kelas,
-          hari,
-          mulai,
-          selesai,
-          jenis,
-          tanggal,
-          status,
-          id_mapel,
-          id_guru,
-          pengawas_id,
-          mapel:id_mapel ( nama ),
-          guru:id_guru ( nama )
-        `)
-        .eq("tahun_id", tahunAktif.id)
-        .order("tanggal", { ascending: true })
-        .order("hari", { ascending: true })
-        .order("mulai", { ascending: true });
+    const { data, error } = await supabase
+      .from("jadwal")
+      .select(`
+        id_jadwal,
+        kelas,
+        hari,
+        mulai,
+        selesai,
+        jenis,
+        tanggal,
+        status,
+        id_mapel,
+        id_guru,
+        pengawas_id,
+        tahun_id,
+        mapel:id_mapel ( nama ),
+        guru:id_guru ( nama )
+      `)
+      .eq("tahun_id", tahunAktif.id)
+      .order("mulai", { ascending: true });
 
     if (error) throw error;
 
-    /* ===============================
-       FORMAT RESPONSE (TETAP ARRAY)
-    =============================== */
     const hasil = (data || []).map((j) => ({
       id: j.id_jadwal,
-
       kelas: j.kelas,
       kelas_id: j.kelas,
-
       hari: j.hari,
       mulai: j.mulai,
       selesai: j.selesai,
-
       tipe: j.jenis,
       tanggal: j.tanggal,
       status: j.status,
-
       mapel: j.mapel?.nama || "-",
       mapel_id: j.id_mapel,
-
       guru: j.guru?.nama || "-",
       guru_id: j.id_guru,
-
       pengawas_id: j.pengawas_id,
-
       rentangWaktu:
-        `${String(j.mulai).slice(0, 5)} - ${String(j.selesai).slice(0, 5)}`
+        `${(j.mulai || "--:--").slice(0,5)} - ${(j.selesai || "--:--").slice(0,5)}`
     }));
 
-    /* ===============================
-       KIRIM ARRAY (AMAN FRONTEND)
-    =============================== */
     res.json(hasil);
 
   } catch (err) {
     console.log("GET jadwal error:", err);
-
     res.status(500).json({
       error: "Gagal mengambil jadwal"
     });
   }
 });
+
+/* =====================================================
+   TAMBAH JADWAL
+===================================================== */
 
 router.post("/jadwal", requireAuth, async (req, res) => {
   try {
@@ -1359,7 +1341,6 @@ router.post("/jadwal", requireAuth, async (req, res) => {
       selesai
     } = req.body;
 
-    /* ambil tahun aktif */
     const { data: tahunAktif, error: errTahun } = await supabase
       .from("tahun_ajaran")
       .select("id")
@@ -1370,34 +1351,41 @@ router.post("/jadwal", requireAuth, async (req, res) => {
 
     const idBaru = "J" + Date.now();
 
-    const { error } = await supabase.from("jadwal").insert([
-      {
-        id_jadwal: idBaru,
-        kelas: Number(kelas),
-        hari: jenis === "pelajaran" ? hari : null,
-        mulai,
-        selesai,
-        tahun_id: tahunAktif.id,
-        jenis,
-        tanggal: jenis === "ujian" ? tanggal : null,
-        pengawas_id: jenis === "ujian" ? guru || null : null,
-        id_mapel: mapel,
-        id_guru: guru || null,
-        status: "aktif"
-      }
-    ]);
+    const { error } = await supabase
+      .from("jadwal")
+      .insert([
+        {
+          id_jadwal: idBaru,
+          kelas: Number(kelas),
+          hari: jenis === "pelajaran" ? hari : null,
+          mulai,
+          selesai,
+          tahun_id: tahunAktif.id,
+          jenis,
+          tanggal: jenis === "ujian" ? tanggal : null,
+          pengawas_id: jenis === "ujian" ? guru || null : null,
+          id_mapel: mapel,
+          id_guru: guru || null,
+          status: "aktif"
+        }
+      ]);
 
     if (error) throw error;
 
     res.json({ success: true });
+
   } catch (err) {
     console.log("POST jadwal:", err);
-
     res.status(500).json({
       error: err.message
     });
   }
 });
+
+/* =====================================================
+   EDIT JADWAL
+===================================================== */
+
 router.put("/jadwal/:id", requireAuth, async (req, res) => {
   try {
     const {
@@ -1422,21 +1410,25 @@ router.put("/jadwal/:id", requireAuth, async (req, res) => {
         tanggal: jenis === "ujian" ? tanggal : null,
         pengawas_id: jenis === "ujian" ? guru || null : null,
         id_mapel: mapel,
-        id_guru: guru || null,
+        id_guru: guru || null
       })
       .eq("id_jadwal", req.params.id);
 
     if (error) throw error;
 
     res.json({ success: true });
+
   } catch (err) {
     console.log("PUT jadwal:", err);
-
     res.status(500).json({
       error: err.message
     });
   }
 });
+
+/* =====================================================
+   STATUS JADWAL
+===================================================== */
 
 router.patch("/jadwal/:id/status", requireAuth, async (req, res) => {
   try {
@@ -1450,6 +1442,7 @@ router.patch("/jadwal/:id/status", requireAuth, async (req, res) => {
     if (error) throw error;
 
     res.json({ success: true });
+
   } catch (err) {
     console.log("PATCH jadwal:", err);
     res.status(500).json({
@@ -1457,6 +1450,10 @@ router.patch("/jadwal/:id/status", requireAuth, async (req, res) => {
     });
   }
 });
+
+/* =====================================================
+   HAPUS JADWAL
+===================================================== */
 
 router.delete("/jadwal/:id", requireAuth, async (req, res) => {
   try {
@@ -1467,14 +1464,19 @@ router.delete("/jadwal/:id", requireAuth, async (req, res) => {
 
     if (error) throw error;
 
-    res.json({ message: "Jadwal berhasil dihapus" });
+    res.json({
+      message: "Jadwal berhasil dihapus"
+    });
+
   } catch (err) {
-    res.status(500).json({ error: "Gagal menghapus jadwal" });
+    res.status(500).json({
+      error: "Gagal menghapus jadwal"
+    });
   }
 });
 
 /* =====================================================
-   DASHBOARD JADWAL
+   DASHBOARD JADWAL HARI INI
 ===================================================== */
 
 router.get("/jadwal/hari-ini", async (req, res) => {
@@ -1494,53 +1496,44 @@ router.get("/jadwal/hari-ini", async (req, res) => {
     const tgl = now.toISOString().slice(0, 10);
 
     /* tahun aktif */
-    const { data: tahunAktif, error: errTahun } =
-      await supabase
-        .from("tahun_ajaran")
-        .select("id")
-        .eq("aktif", true)
-        .single();
+    const { data: tahunAktif, error: errTahun } = await supabase
+      .from("tahun_ajaran")
+      .select("id")
+      .eq("aktif", true)
+      .single();
 
     if (errTahun) throw errTahun;
 
-    /* jadwal tahun aktif saja */
-    const { data: jadwal, error } =
-      await supabase
-        .from("jadwal")
-        .select("*")
-        .eq("status", "aktif")
-        .eq("tahun_id", tahunAktif.id);
+    const { data: jadwal, error } = await supabase
+      .from("jadwal")
+      .select("*")
+      .eq("status", "aktif")
+      .eq("tahun_id", tahunAktif.id)
+      .order("mulai", { ascending: true });
 
     if (error) throw error;
 
-    const { data: guru } =
-      await supabase
-        .from("guru")
-        .select("id_guru,nama");
+    const { data: guru } = await supabase
+      .from("guru")
+      .select("id_guru,nama");
 
-    const { data: mapel } =
-      await supabase
-        .from("mapel")
-        .select("id_mapel,nama");
+    const { data: mapel } = await supabase
+      .from("mapel")
+      .select("id_mapel,nama");
 
     const hasil = (jadwal || [])
-      .filter(
-        (j) =>
-          (j.jenis === "pelajaran" &&
-            j.hari === hariIni) ||
-          (j.jenis === "ujian" &&
-            j.tanggal === tgl)
+      .filter((j) =>
+        (j.jenis === "pelajaran" && j.hari === hariIni) ||
+        (j.jenis === "ujian" && j.tanggal === tgl)
       )
       .map((j) => {
-        const g =
-          (guru || []).find(
-            (x) => x.id_guru === j.id_guru
-          );
+        const g = (guru || []).find(
+          (x) => x.id_guru === j.id_guru
+        );
 
-        const m =
-          (mapel || []).find(
-            (x) => x.id_mapel === j.id_mapel
-          );
+        const m = (mapel || []).find(
+          (x) => x.id_mapel === j.id_mapel
+        );
 
         return {
           id: j.id_jadwal,
@@ -1549,7 +1542,8 @@ router.get("/jadwal/hari-ini", async (req, res) => {
           hari: hariIni,
           mapel: m?.nama || "-",
           guru: g?.nama || "-",
-          time: `${String(j.mulai).slice(0,5)} - ${String(j.selesai).slice(0,5)}`
+          time:
+            `${String(j.mulai).slice(0,5)} - ${String(j.selesai).slice(0,5)}`
         };
       });
 
@@ -1561,6 +1555,10 @@ router.get("/jadwal/hari-ini", async (req, res) => {
     });
   }
 });
+
+/* =====================================================
+   DASHBOARD JADWAL MINGGU INI
+===================================================== */
 
 router.get("/jadwal/minggu-ini", async (req, res) => {
   try {
@@ -1575,8 +1573,8 @@ router.get("/jadwal/minggu-ini", async (req, res) => {
     const minggu = new Date(senin);
     minggu.setDate(senin.getDate() + 6);
 
-    const start = senin.toISOString().slice(0, 10);
-    const end = minggu.toISOString().slice(0, 10);
+    const start = senin.toISOString().slice(0,10);
+    const end = minggu.toISOString().slice(0,10);
 
     const hariMap = [
       "Minggu",
@@ -1589,34 +1587,30 @@ router.get("/jadwal/minggu-ini", async (req, res) => {
     ];
 
     /* tahun aktif */
-    const { data: tahunAktif, error: errTahun } =
-      await supabase
-        .from("tahun_ajaran")
-        .select("id")
-        .eq("aktif", true)
-        .single();
+    const { data: tahunAktif, error: errTahun } = await supabase
+      .from("tahun_ajaran")
+      .select("id")
+      .eq("aktif", true)
+      .single();
 
     if (errTahun) throw errTahun;
 
-    /* jadwal tahun aktif saja */
-    const { data: jadwal, error } =
-      await supabase
-        .from("jadwal")
-        .select("*")
-        .eq("status", "aktif")
-        .eq("tahun_id", tahunAktif.id);
+    const { data: jadwal, error } = await supabase
+      .from("jadwal")
+      .select("*")
+      .eq("status", "aktif")
+      .eq("tahun_id", tahunAktif.id)
+      .order("mulai", { ascending: true });
 
     if (error) throw error;
 
-    const { data: guru } =
-      await supabase
-        .from("guru")
-        .select("id_guru,nama");
+    const { data: guru } = await supabase
+      .from("guru")
+      .select("id_guru,nama");
 
-    const { data: mapel } =
-      await supabase
-        .from("mapel")
-        .select("id_mapel,nama");
+    const { data: mapel } = await supabase
+      .from("mapel")
+      .select("id_mapel,nama");
 
     const hasil = (jadwal || [])
       .filter((j) => {
@@ -1626,9 +1620,7 @@ router.get("/jadwal/minggu-ini", async (req, res) => {
           j.jenis === "ujian" &&
           j.tanggal >= start &&
           j.tanggal <= end
-        ) {
-          return true;
-        }
+        ) return true;
 
         return false;
       })
@@ -1636,23 +1628,16 @@ router.get("/jadwal/minggu-ini", async (req, res) => {
         let hari = j.hari;
 
         if (j.jenis === "ujian" && j.tanggal) {
-          hari =
-            hariMap[
-              new Date(
-                `${j.tanggal}T12:00:00`
-              ).getDay()
-            ];
+          hari = hariMap[new Date(j.tanggal).getDay()];
         }
 
-        const g =
-          (guru || []).find(
-            (x) => x.id_guru === j.id_guru
-          );
+        const g = (guru || []).find(
+          (x) => x.id_guru === j.id_guru
+        );
 
-        const m =
-          (mapel || []).find(
-            (x) => x.id_mapel === j.id_mapel
-          );
+        const m = (mapel || []).find(
+          (x) => x.id_mapel === j.id_mapel
+        );
 
         return {
           id: j.id_jadwal,
@@ -1661,7 +1646,8 @@ router.get("/jadwal/minggu-ini", async (req, res) => {
           hari,
           mapel: m?.nama || "-",
           guru: g?.nama || "-",
-          time: `${String(j.mulai).slice(0,5)} - ${String(j.selesai).slice(0,5)}`
+          time:
+            `${String(j.mulai).slice(0,5)} - ${String(j.selesai).slice(0,5)}`
         };
       });
 
@@ -1673,4 +1659,5 @@ router.get("/jadwal/minggu-ini", async (req, res) => {
     });
   }
 });
+
 module.exports = router;
