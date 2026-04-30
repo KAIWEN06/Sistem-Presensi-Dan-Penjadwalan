@@ -294,33 +294,33 @@ const filtered = jadwalData.filter((item) => {
         </div>
       </div>
 
-      <div className="rounded-3xl bg-white border border-gray-100 shadow-sm px-4 sm:px-5 py-3">
-  <div className="overflow-x-auto">
-    <div className="flex gap-5 min-w-max">
-      {statusTabs.map((tab) => {
-        const active = activeTab === tab.key;
+      <div className="rounded-3xl bg-white border border-gray-100 shadow-sm px-4 sm:px-5 py-3 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <div className="overflow-x-auto">
+          <div className="flex gap-5 min-w-max">
+            {statusTabs.map((tab) => {
+              const active = activeTab === tab.key;
 
-        return (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`relative pb-2 text-sm font-bold whitespace-nowrap transition ${
-              active
-                ? "text-[#715445]"
-                : "text-gray-400 hover:text-gray-700"
-            }`}
-          >
-            {tab.label}
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`relative pb-2 text-sm font-bold whitespace-nowrap transition ${
+                    active
+                      ? "text-[#715445]"
+                      : "text-gray-400 hover:text-gray-700"
+                  }`}
+                >
+                  {tab.label}
 
-            {active && (
-              <span className="absolute left-0 right-0 -bottom-[1px] h-[2px] rounded-full bg-[#715445]" />
-            )}
-          </button>
-        );
-      })}
-    </div>
-  </div>
-</div>
+                  {active && (
+                    <span className="absolute left-0 right-0 -bottom-[1px] h-[2px] rounded-full bg-[#715445]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
 
       {/* FILTER */}
       <div className="rounded-3xl bg-white border border-gray-100 shadow-sm p-4 sm:p-5">

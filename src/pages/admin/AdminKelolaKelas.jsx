@@ -232,7 +232,7 @@ export default function AdminKelolaKelas() {
       </div>
 
       {/* TOOLBAR */}
-      <div className="rounded-3xl border border-gray-100 bg-white shadow-sm p-4 sm:p-5 space-y-4 sticky top-2 z-20 overflow-hidden">
+      <div className="rounded-3xl border border-gray-100 bg-white shadow-sm p-4 sm:p-5 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
           <div className="relative">
             <Search

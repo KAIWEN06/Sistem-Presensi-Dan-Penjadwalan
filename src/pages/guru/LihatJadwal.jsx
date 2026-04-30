@@ -160,7 +160,7 @@ const LihatJadwal = () => {
             </div>
 
             {/* MOBILE */}
-            <div className="lg:hidden overflow-x-auto pb-2">
+            <div className="lg:hidden overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               <div className="flex gap-4 min-w-max">
                 {Object.keys(
                   dataPelajaran

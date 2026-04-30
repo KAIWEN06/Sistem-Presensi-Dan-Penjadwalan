@@ -31,7 +31,7 @@ export default function ResetKirim() {
           email,
           {
             redirectTo:
-              "http://localhost:5173/update-password",
+              "https://rpl-ashen.vercel.app/update-password",
           }
         );
 

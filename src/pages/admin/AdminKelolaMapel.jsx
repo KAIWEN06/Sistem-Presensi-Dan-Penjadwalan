@@ -301,7 +301,7 @@ const AdminKelolaMapel = () => {
 
       {/* TOP TOOLBAR */}
 
-<div className="rounded-3xl bg-white border border-gray-100 shadow-sm p-4 sm:p-5 space-y-4 sticky top-2 z-20 overflow-hidden">
+<div className="rounded-3xl bg-white border border-gray-100 shadow-sm p-4 sm:p-5 space-y-4">
 
   {/* SEARCH + ACTION */}
   <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
@@ -364,7 +364,7 @@ const AdminKelolaMapel = () => {
   </div>
 
   {/* FILTER */}
-  <div className="overflow-x-auto">
+  <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
     <div className="flex gap-2 w-max min-w-full">
       {[
         "semua",

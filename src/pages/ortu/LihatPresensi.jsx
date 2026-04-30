@@ -178,7 +178,7 @@ const LihatPresensi = () => {
     <div className="space-y-6">
 
       {/* PILIH ANAK */}
-      <div className="overflow-x-auto pb-1">
+      <div className="overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex gap-4 min-w-max">
           {students.map((s, i) => (
             <button

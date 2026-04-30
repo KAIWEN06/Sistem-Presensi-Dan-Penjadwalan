@@ -2,14 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import api from "../lib/axios";
-
-// SAFE FIX ONLY
-// KEEP SAME TEXT
-// KEEP SAME THEME
-// KEEP SAME FUNCTION
-// MOBILE HAMBURGER FIX
-// RESPONSIVE POLISH
-// PRODUCTION READY
+import UserDropdown from "../components/common/UserDropdown";
 
 export default function AppHeader({
   isSidebarOpen,
@@ -208,25 +201,23 @@ export default function AppHeader({
         {/* RIGHT */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="hidden text-right md:block">
-            <p className="text-sm font-bold text-gray-700">
-              {clock}
-            </p>
-
-            <p className="text-xs capitalize text-gray-500">
-              {dateNow}
-            </p>
+            <p className="text-sm font-bold text-gray-700">{clock}</p>
+            <p className="text-xs capitalize text-gray-500">{dateNow}</p>
           </div>
 
           <div className="flex items-center gap-2 border-l border-gray-300 pl-3 sm:gap-3 sm:pl-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#715445] text-white font-bold sm:h-11 sm:w-11 shrink-0">
-              {avatar}
-            </div>
+            {/* GANTI BAGIAN INI DENGAN USERDROPDOWN */}
+            <UserDropdown 
+              nama={nama} 
+              role={role} 
+              avatar={avatar} 
+            />
 
+            {/* Nama tetap muncul di samping avatar pada layar desktop (sm ke atas) */}
             <div className="hidden sm:block">
               <p className="text-[10px] font-semibold uppercase text-gray-400">
                 {role}
               </p>
-
               <p className="max-w-[160px] truncate text-sm font-bold text-gray-800">
                 {nama}
               </p>

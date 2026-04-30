@@ -74,10 +74,22 @@ export default function AdminKelolaMurid() {
       setKelasList(kelasRes.data || []);
       const tahunRes = await api.get("/admin/tahun-ajaran/aktif").catch(() => ({ data: { id: "-" } }));
       setTahunAktif(tahunRes.data?.id || "-");
+      const tahunAll = await api
+      .get("/admin/tahun-ajaran")
+      .catch(() => ({ data: [] }));
+    const tahunNonAktif = (tahunAll.data || [])
+      .filter((t) => t.aktif === false)
+      .map((t) => t.id)
+      .filter((v, i, arr) => arr.indexOf(v) === i)
+      .sort((a, b) => b.localeCompare(a));
+
+    setListTahunLulus(tahunNonAktif);
     } catch (err) {
       console.log(err);
     }
   };
+
+  
 
   const fetchMurid = async () => {
     try {
@@ -204,6 +216,8 @@ const toggleStatus = async (murid) => {
     const cocokTahun = filterStatus !== "lulus" ? true : filterTahunLulus === "semua" ? true : String(m.tahun) === String(filterTahunLulus);
     return cocokSearch && cocokStatus && cocokKelas && cocokTahun;
   });
+
+  const [listTahunLulus, setListTahunLulus] = useState([]);
 
   /* =========================================================
    STATE TAMBAHAN
@@ -408,6 +422,8 @@ function ActionBtn({
   onClick,
   danger = false
 }) {
+  
+
   return (
     <button
       onClick={onClick}
@@ -421,6 +437,7 @@ function ActionBtn({
     </button>
   );
 }
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12 animate-in fade-in duration-700">
@@ -578,11 +595,16 @@ function ActionBtn({
   {/* HEADER */}
   <div className="flex flex-col gap-4">
     <div className="space-y-1">
-      <div className="flex items-center gap-2 text-[#715445]">
-        <Users size={18} className="shrink-0" />
-        <h3 className="text-xl sm:text-2xl font-black tracking-tight text-gray-900">
-          Database Murid
-        </h3>
+      <div className="flex items-center justify-between gap-3 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        
+        {/* KIRI */}
+        <div className="flex items-center gap-2 text-[#715445]">
+          <Users size={18} className="shrink-0" />
+          <h3 className="text-xl sm:text-2xl font-black tracking-tight text-gray-900">
+            Database Murid
+          </h3>
+        </div>
+
       </div>
 
       <p className="text-sm text-gray-500 font-medium">
@@ -592,7 +614,7 @@ function ActionBtn({
 
     {/* SEARCH + FILTER */}
     <div className="sticky top-2 z-20 rounded-3xl bg-white/90 backdrop-blur-md border border-gray-100 shadow-sm p-3 sm:p-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {/* SEARCH */}
         <div className="relative group">
           <Search
@@ -644,15 +666,68 @@ function ActionBtn({
         </div>
 
         {/* FILTER KELAS */}
+        {filterStatus !== "lulus" && (
+          <select
+            value={filterKelas}
+            onChange={(e) => setFilterKelas(e.target.value)}
+            className="
+              w-full h-11 px-4
+              rounded-2xl
+              border border-gray-200
+              bg-white
+              text-sm font-semibold
+              outline-none
+              focus:ring-4 focus:ring-[#715445]/10
+            "
+          >
+            <option value="semua">Semua Kelas</option>
+
+            {kelasList.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.nama}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+{/* STATUS TAB */}
+<div className="mt-3 flex flex-col gap-3">
+
+  {/* BARIS 1: TAB + SLOT KANAN */}
+  <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex items-center justify-between gap-3">
+
+    {/* TAB */}
+    <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+      {[
+        "semua",
+        "aktif",
+        "nonaktif",
+        "lulus"
+      ].map((s) => (
+        <button
+          key={s}
+          onClick={() => setFilterStatus(s)}
+          className={`shrink-0 min-h-[42px] px-4 sm:px-5 rounded-2xl text-[11px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${
+            filterStatus === s
+              ? "bg-[#715445] text-white shadow-md"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+          }`}
+        >
+          {s}
+        </button>
+      ))}
+    </div>
+
+    {/* SLOT KANAN (DESKTOP) */}
+    <div className="hidden lg:flex items-center">
+      {filterStatus === "lulus" ? (
         <select
-          value={filterKelas}
-          onChange={(e) =>
-            setFilterKelas(
-              e.target.value
-            )
-          }
+          value={filterTahunLulus}
+          onChange={(e) => setFilterTahunLulus(e.target.value)}
           className="
-            w-full h-11 px-4
+            w-[180px]
+            h-10 px-4
             rounded-2xl
             border border-gray-200
             bg-white
@@ -661,50 +736,87 @@ function ActionBtn({
             focus:ring-4 focus:ring-[#715445]/10
           "
         >
-          <option value="semua">
-            Semua Kelas
-          </option>
+          <option value="semua">Semua Tahun</option>
 
-          {kelasList.map((k) => (
-            <option
-              key={k.id}
-              value={k.id}
-            >
-              {k.nama}
+          {(listTahunLulus || []).map((t) => (
+            <option key={t} value={t}>
+              {t}
             </option>
           ))}
         </select>
-      </div>
+      ) : (
+        <button
+          onClick={() => setShowTambah(true)}
+          className="
+            h-10 px-5
+            rounded-2xl
+            bg-[#715445]
+            text-white
+            text-sm font-bold
+            shadow-md shadow-[#715445]/20
+            hover:bg-[#5e4336]
+            active:scale-95
+            transition-all
+            flex items-center gap-2
+          "
+        >
+          <Plus size={16} />
+          Tambah Murid
+        </button>
+      )}
+    </div>
 
-      {/* STATUS TAB */}
-      <div className="mt-3 -mx-1 px-1 overflow-x-auto scrollbar-none">
-        <div className="flex gap-2 w-max min-w-full pb-1">
-          {[
-            "semua",
-            "aktif",
-            "nonaktif",
-            "lulus"
-          ].map((s) => (
-            <button
-              key={s}
-              onClick={() =>
-                setFilterStatus(s)
-              }
-              className={`shrink-0 min-h-[42px] px-4 sm:px-5 rounded-2xl text-[11px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${
-                filterStatus === s
-                  ? "bg-[#715445] text-white shadow-md"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
+  </div>
+
+  {/* BARIS 2: MOBILE SLOT */}
+  <div className="lg:hidden w-full">
+    {filterStatus === "lulus" ? (
+      <select
+        value={filterTahunLulus}
+        onChange={(e) => setFilterTahunLulus(e.target.value)}
+        className="
+          w-full
+          h-11 px-4
+          rounded-2xl
+          border border-gray-200
+          bg-white
+          text-sm font-semibold
+          outline-none
+          focus:ring-4 focus:ring-[#715445]/10
+        "
+      >
+        <option value="semua">Semua Tahun</option>
+
+        {(listTahunLulus || []).map((t) => (
+          <option key={t} value={t}>
+            {t}
+          </option>
+        ))}
+      </select>
+    ) : (
+      <button
+        onClick={() => setShowTambah(true)}
+        className="
+          w-full
+          h-11
+          rounded-2xl
+          bg-[#715445]
+          text-white
+          text-sm font-bold
+          flex items-center justify-center gap-2
+          active:scale-95
+        "
+      >
+        <Plus size={16} />
+        Tambah Murid
+      </button>
+    )}
+  </div>
+
+</div>
     </div>
   </div>
 
-  {/* CARD / TABLE WRAPPER */}
   <div className="bg-white rounded-[2rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.04)] overflow-hidden">
     {/* ======================================
         DESKTOP TABLE
@@ -957,29 +1069,6 @@ function ActionBtn({
           </div>
         ))
       )}
-    </div>
-
-    {/* FOOTER */}
-    <div className="p-4 border-t border-gray-100 bg-white">
-      <button
-        onClick={() =>
-          setShowTambah(true)
-        }
-        className="
-          w-full
-          min-h-[48px]
-          rounded-2xl
-          border-2 border-dashed border-gray-200
-          text-sm font-bold text-gray-500
-          hover:border-[#715445]
-          hover:text-[#715445]
-          transition-all
-          flex items-center justify-center gap-2
-        "
-      >
-        <Plus size={18} />
-        Tambah Murid Baru
-      </button>
     </div>
   </div>
 </section>

@@ -113,7 +113,7 @@ const JadwalOrtu = () => {
     <div className="space-y-6">
 
       {/* PILIH ANAK */}
-      <div className="overflow-x-auto pb-1">
+      <div className="overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex gap-4 min-w-max">
           {students.map((s, i) => (
             <button
@@ -146,25 +146,25 @@ const JadwalOrtu = () => {
       <div className="flex gap-3 flex-wrap">
         <button
           onClick={() => setTab("pelajaran")}
-          className={`px-4 py-2 rounded-xl font-semibold text-sm ${
+          className={`px-5 py-2.5 rounded-2xl font-bold text-sm border transition shadow-sm flex items-center ${
             tab === "pelajaran"
-              ? "bg-green-100 text-green-700"
-              : "bg-white border"
+              ? "bg-green-50 border-green-600 text-green-700 ring-2 ring-green-100"
+              : "bg-white border-[#5A3E36]/20 text-[#5A3E36] hover:bg-[#F8F5F4]"
           }`}
         >
-          <BookOpen className="w-4 h-4 inline mr-2" />
+          <BookOpen className="w-4 h-4 mr-2" />
           Pelajaran
         </button>
 
         <button
           onClick={() => setTab("ujian")}
-          className={`px-4 py-2 rounded-xl font-semibold text-sm ${
+          className={`px-5 py-2.5 rounded-2xl font-bold text-sm border transition shadow-sm flex items-center ${
             tab === "ujian"
-              ? "bg-red-100 text-red-700"
-              : "bg-white border"
+              ? "bg-red-50 border-red-600 text-red-700 ring-2 ring-red-100"
+              : "bg-white border-[#5A3E36]/20 text-[#5A3E36] hover:bg-[#F8F5F4]"
           }`}
         >
-          <FileText className="w-4 h-4 inline mr-2" />
+          <FileText className="w-4 h-4 mr-2" />
           Ujian
         </button>
       </div>

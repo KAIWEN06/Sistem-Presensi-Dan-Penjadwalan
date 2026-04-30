@@ -29,14 +29,12 @@ export default function LayoutOrtu() {
     <div className="h-screen flex bg-[#ECEBEB] text-gray-800 overflow-hidden">
 
       {/* MOBILE OVERLAY */}
-      {isMobileSidebarOpen && (
-        <div
-          onClick={() =>
-            setIsMobileSidebarOpen(false)
-          }
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-        />
-      )}
+      <div
+        onClick={() => setIsMobileSidebarOpen(false)}
+        className={`lg:hidden fixed inset-0 bg-black/45 backdrop-blur-sm z-40 transition-all duration-300 ${
+          isMobileSidebarOpen ? "opacity-100 visible" : "opacity-0 invisible"
+        }`}
+      />
 
       {/* DESKTOP SIDEBAR */}
       <div className="hidden lg:block h-full">

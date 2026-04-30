@@ -935,7 +935,7 @@ const handlePDF = async () => {
         </div>
 
         {/* desktop */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-gray-50">
               <tr>
