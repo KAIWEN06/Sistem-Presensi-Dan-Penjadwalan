@@ -509,9 +509,23 @@ router.delete("/kelas/:id", requireAuth, async (req, res) => {
 /* =====================================================
    MURID
 ===================================================== */
-/* =====================================================
-   ROLLOVER TAHUN AJARAN
-===================================================== */
+
+router.get("/tahun-ajaran", requireAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("tahun_ajaran")
+      .select("id, aktif")
+      .order("id", { ascending: false });
+
+    if (error) throw error;
+
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({
+      error: "Gagal ambil tahun ajaran"
+    });
+  }
+});
 
 router.patch("/murid/:nis", requireAuth, async (req, res) => {
   try {
