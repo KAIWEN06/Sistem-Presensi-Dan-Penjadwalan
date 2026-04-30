@@ -1427,7 +1427,10 @@ router.get("/jadwal", requireAuth, async (req, res) => {
       rentangWaktu:
         `${(j.mulai || "--:--").slice(0,5)} - ${(j.selesai || "--:--").slice(0,5)}`
     }));
+<<<<<<< HEAD
 
+=======
+>>>>>>> main
     res.json(hasil);
 
   } catch (err) {
