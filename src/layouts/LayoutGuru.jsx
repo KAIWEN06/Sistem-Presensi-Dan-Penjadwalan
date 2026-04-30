@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/guru/SidebarGuru";
-import AppHeader from "./AppHeader";
-import FooterGuru from "../components/guru/FooterGuru";
+import AppHeader from "../components/AppHeader";
+import FooterGuru from "../components/Footer";
 
 // SAFE RESPONSIVE LAYOUT
 // MOBILE DRAWER READY

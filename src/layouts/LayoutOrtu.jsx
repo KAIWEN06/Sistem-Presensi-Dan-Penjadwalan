@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/ortu/SidebarOrtu";
-import AppHeader from "./AppHeader";
-import Footer from "../components/ortu/FooterOrtu";
+import AppHeader from "../components/AppHeader";
+import Footer from "../components/Footer";
 
 export default function LayoutOrtu() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
