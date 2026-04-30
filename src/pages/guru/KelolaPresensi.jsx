@@ -501,7 +501,7 @@ const KelolaPresensi = () => {
 
       {/* DESKTOP TABLE */}
       <div className="hidden md:block rounded-3xl bg-white border border-gray-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="bg-gray-50">

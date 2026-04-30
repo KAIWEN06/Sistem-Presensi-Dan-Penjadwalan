@@ -222,7 +222,7 @@ export default function AdminKelolaGuru() {
       </div>
 
       {/* SEARCH FILTER */}
-      <div className="rounded-3xl bg-white border border-gray-100 shadow-sm p-4 sm:p-5 space-y-4 sticky top-2 z-20">
+      <div className="rounded-3xl bg-white border border-gray-100 shadow-sm p-4 sm:p-5 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
           <div className="relative">
             <Search
@@ -285,7 +285,7 @@ export default function AdminKelolaGuru() {
       </div>
 
       {/* DESKTOP TABLE */}
-      <div className="hidden md:block rounded-3xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+      <div className="hidden md:block rounded-3xl bg-white border border-gray-100 shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px]">
             <thead>
@@ -572,7 +572,7 @@ function GuruModal({
         onClick={onClose}
       />
 
-      <div className="absolute inset-0 overflow-y-auto">
+      <div className="absolute inset-0">
         <div className="min-h-full flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="w-full sm:max-w-xl bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl border border-gray-100 overflow-hidden">
             <div className="px-5 sm:px-7 py-4 border-b border-gray-100 flex gap-4">

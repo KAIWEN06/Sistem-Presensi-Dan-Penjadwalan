@@ -568,7 +568,7 @@ const RiwayatPresensi = () => {
           </div>
 
           {/* TABLE DESKTOP */}
-          <div className="hidden md:block overflow-x-auto rounded-3xl border border-gray-100">
+          <div className="hidden md:block overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden rounded-3xl border border-gray-100">
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>

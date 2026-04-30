@@ -31,7 +31,7 @@ export default function AuthLayout({ children }) {
           </div>
 
           {/* RIGHT */}
-          <div className="w-full md:w-1/2 h-full bg-[#362B26] px-8 py-10 lg:px-12 lg:py-12 flex items-center justify-center text-center relative overflow-hidden">
+          <div className="hidden md:flex w-full md:w-1/2 h-full bg-[#362B26] px-8 py-10 lg:px-12 lg:py-12 flex items-center justify-center text-center relative overflow-hidden">
 
             <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-white/10 to-transparent"></div>
 
