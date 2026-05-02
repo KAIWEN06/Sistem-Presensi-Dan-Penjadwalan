@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import api from "../lib/axios";
-import UserDropdown from "../components/common/UserDropdown";
+import UserDropdown from "./common/UserDropdown";
 
 export default function AppHeader({
   isSidebarOpen,
