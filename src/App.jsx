@@ -17,6 +17,7 @@ import AdminKelolaKelas from "./pages/admin/AdminKelolaKelas";
 import AdminKelolaJadwal from "./pages/admin/AdminKelolaJadwal";
 import AdminKelolaAkun from "./pages/admin/AdminKelolaAkun";
 import AdminKelolaMapel from "./pages/admin/AdminKelolaMapel";
+import AdminKalender from "./pages/admin/AdminKalender";
 
 /* ORTU */
 import LayoutOrtu from "./layouts/LayoutOrtu";
@@ -88,6 +89,7 @@ function App() {
         <Route path="jadwal" element={<AdminKelolaJadwal />} />
         <Route path="akun" element={<AdminKelolaAkun />} />
         <Route path="mapel" element={<AdminKelolaMapel />} />
+        <Route path="kalender" element={<AdminKalender />} />
       </Route>
 
       {/* ORTU */}

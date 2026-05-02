@@ -14,6 +14,7 @@ export default function AdminSidebar({
     { name: "Kelola Mapel", icon: "ti ti-book", path: "/admin/mapel" },
     { name: "Kelola Kelas", icon: "ti ti-layout-grid", path: "/admin/kelas" },
     { name: "Kelola Jadwal", icon: "ti ti-calendar-event", path: "/admin/jadwal" },
+    { name: "Kalender Akademik", icon: "ti ti-calendar", path: "/admin/kalender" },
     { name: "Kelola Akun", icon: "ti ti-settings", path: "/admin/akun" },
   ];
 

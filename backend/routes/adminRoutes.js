@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const supabase = require("../config/supabase");
 const requireAuth = require("../middleware/auth");
+const { todayManado } = require("../utils/timezone");
 const multer = require("multer");
 const XLSX = require("xlsx");
 
@@ -1649,12 +1650,215 @@ router.delete("/jadwal/:id", requireAuth, async (req, res) => {
   }
 });
 
+/* =========================
+   KALENDER AKADEMIK
+========================= */
+
+/* =========================
+   GET KALENDER
+========================= */
+router.get("/kalender", requireAuth, async (req, res) => {
+  try {
+    const { data: kalender, error } = await supabase
+      .from("kalender_akademik")
+      .select(`
+        id,
+        tanggal_mulai,
+        tanggal_selesai,
+        jenis,
+        keterangan,
+        semua_kelas,
+        kalender_kelas (kelas)
+      `)
+      .order("tanggal_mulai", { ascending: false });
+
+    if (error) throw error;
+
+    const data = kalender.map((row) => ({
+      id: row.id,
+      title: row.keterangan,
+      start: row.tanggal_mulai,
+      end: row.tanggal_selesai,
+      type: row.jenis,
+      color:
+        row.jenis === "libur"
+          ? "#E16766"
+          : row.jenis === "kegiatan"
+          ? "#5B88C7"
+          : "#999",
+      semua_kelas: row.semua_kelas,
+      kelas: row.kalender_kelas?.map((k) => k.kelas) || [],
+    }));
+
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Gagal ambil kalender" });
+  }
+});
+
+/* =========================
+   CREATE KALENDER
+========================= */
+router.post("/kalender", requireAuth, async (req, res) => {
+  const {
+    tanggal_mulai,
+    tanggal_selesai,
+    jenis,
+    keterangan,
+    semua_kelas,
+    kelas,
+  } = req.body;
+
+  try {
+    // insert kalender
+    const { data: insertData, error: insertError } = await supabase
+      .from("kalender_akademik")
+      .insert([
+        {
+          tanggal_mulai,
+          tanggal_selesai,
+          jenis,
+          keterangan,
+          semua_kelas,
+        },
+      ])
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    const kalenderId = insertData.id;
+
+    // insert kelas kalau tidak semua kelas
+    if (!semua_kelas && kelas?.length > 0) {
+      const payload = kelas.map((k) => ({
+        kalender_id: kalenderId,
+        kelas: k,
+      }));
+
+      const { error: kelasError } = await supabase
+        .from("kalender_kelas")
+        .insert(payload);
+
+      if (kelasError) throw kelasError;
+    }
+
+    res.json({ message: "Kalender berhasil dibuat" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Gagal simpan kalender" });
+  }
+});
+
+/* =========================
+   UPDATE KALENDER
+========================= */
+router.put("/kalender/:id", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const {
+    tanggal_mulai,
+    tanggal_selesai,
+    jenis,
+    keterangan,
+    semua_kelas,
+    kelas,
+  } = req.body;
+
+  try {
+    // update kalender utama
+    const { error: updateError } = await supabase
+      .from("kalender_akademik")
+      .update({
+        tanggal_mulai,
+        tanggal_selesai,
+        jenis,
+        keterangan,
+        semua_kelas,
+      })
+      .eq("id", id);
+
+    if (updateError) throw updateError;
+
+    // hapus semua relasi kelas lama
+    await supabase
+      .from("kalender_kelas")
+      .delete()
+      .eq("kalender_id", id);
+
+    // insert ulang kalau tidak semua kelas
+    if (!semua_kelas && kelas?.length > 0) {
+      const payload = kelas.map((k) => ({
+        kalender_id: id,
+        kelas: k,
+      }));
+
+      const { error: kelasError } = await supabase
+        .from("kalender_kelas")
+        .insert(payload);
+
+      if (kelasError) throw kelasError;
+    }
+
+    res.json({ message: "Kalender diupdate" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Gagal update kalender" });
+  }
+});
+
+/* =========================
+   DELETE KALENDER
+========================= */
+router.delete("/kalender/:id", requireAuth, async (req, res) => {
+  try {
+    // hapus relasi dulu
+    await supabase
+      .from("kalender_kelas")
+      .delete()
+      .eq("kalender_id", req.params.id);
+
+    // hapus utama
+    const { error } = await supabase
+      .from("kalender_akademik")
+      .delete()
+      .eq("id", req.params.id);
+
+    if (error) throw error;
+
+    res.json({ message: "Kalender dihapus" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Gagal hapus kalender" });
+  }
+});
 /* =====================================================
    DASHBOARD JADWAL HARI INI
 ===================================================== */
 
 router.get("/jadwal/hari-ini", async (req, res) => {
   try {
+ const today = todayManado();
+
+  const { data: cekLibur, error: errLibur } = await supabase
+    .from("kalender_akademik")
+    .select("keterangan")
+    .lte("tanggal_mulai", today)
+    .gte("tanggal_selesai", today)
+    .eq("semua_kelas", true)
+    .maybeSingle();
+
+  if (errLibur) throw errLibur;
+
+  if (cekLibur) {
+    return res.json({
+      isLibur: true,
+      keterangan: cekLibur.keterangan
+    });
+  }
+
+  await autoUpdateStatusUjian();
+
     const hariList = [
       "Minggu",
       "Senin",
@@ -1664,8 +1868,6 @@ router.get("/jadwal/hari-ini", async (req, res) => {
       "Jumat",
       "Sabtu"
     ];
-
-    await autoUpdateStatusUjian();
 
     const now = new Date();
     const hariIni = hariList[now.getDay()];
