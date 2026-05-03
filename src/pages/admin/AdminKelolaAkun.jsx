@@ -19,14 +19,6 @@ import toast from "react-hot-toast";
 import api from "../../lib/axios";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 
-// PREMIUM UI UPGRADE
-// MOBILE SAFE TOOLBAR FIX
-// NO OVERFLOW SMALL SCREEN
-// PREMIUM ADD EDIT MODAL
-// PERFECT ALIGNMENT FIX
-// TOAST SYSTEM READY
-// SAFE RESPONSIVE REFACTOR
-
 export default function AdminKelolaAkun() {
   const [tab, setTab] = useState("guru");
   const [status, setStatus] = useState("semua");

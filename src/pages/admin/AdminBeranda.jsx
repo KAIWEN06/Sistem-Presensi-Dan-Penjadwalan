@@ -21,6 +21,7 @@ import {
 
 import toast from "react-hot-toast";
 import api from "../../lib/axios";
+import ScheduleCard from "../../components/ScheduleCard";
 
 // PREMIUM UI UPGRADE
 const glassCard =
@@ -113,82 +114,6 @@ const StatCard = ({
 );
 
 // TABLE TO CARD RESPONSIVE
-const ScheduleCard = ({
-  type,
-  grade,
-  day,
-  subject,
-  teacher,
-  time,
-  date
-}) => {
-  const isExam =
-    String(type).toLowerCase() ===
-    "ujian";
-
-  return (
-    <div
-      className={`
-        ${glassCard}
-        ${hoverLift}
-        rounded-3xl p-4 sm:p-5
-        relative overflow-hidden h-full
-      `}
-    >
-      <div
-        className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-          isExam
-            ? "bg-[#E16766]"
-            : "bg-[#715445]"
-        }`}
-      />
-
-      <div className="pl-2">
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span
-            className={`text-[10px] font-black px-2.5 py-1 rounded-full border uppercase ${
-              isExam
-                ? "bg-[#FCEAE9] text-[#E16766] border-[#E16766]/20"
-                : "bg-[#F7F2EF] text-[#715445] border-[#715445]/20"
-            }`}
-          >
-            {type}
-          </span>
-
-          <span className="text-sm font-semibold text-gray-900 break-words">
-            {grade}
-          </span>
-        </div>
-
-        <div className="space-y-3 text-xs sm:text-sm text-gray-600">
-          <RowIcon
-            icon={CalendarDays}
-            text={
-              date
-                ? `${day}, ${date}`
-                : day
-            }
-          />
-
-          <RowIcon
-            icon={BookOpen}
-            text={subject}
-          />
-
-          <RowIcon
-            icon={User}
-            text={teacher}
-          />
-
-          <RowIcon
-            icon={Clock}
-            text={time}
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const RowIcon = ({
   icon: Icon,
@@ -214,6 +139,8 @@ const AdminBeranda = () => {
       mapel: "-",
       kelas: "-"
     });
+  
+  const [infoLibur, setInfoLibur] = useState(null);
 
   const [jadwalHariIni, setJadwalHariIni] =
     useState([]);
@@ -312,9 +239,12 @@ const AdminBeranda = () => {
           statsRes.data || {}
         );
 
-        setJadwalHariIni(
-          hariRes.data || []
-        );
+        setJadwalHariIni(hariRes.data?.data || []);
+
+        setInfoLibur({
+          isLibur: hariRes.data?.isLibur,
+          keterangan: hariRes.data?.keterangan
+        });
 
         setJadwalMinggu(
           mingguRes.data || []
@@ -488,6 +418,12 @@ const AdminBeranda = () => {
           )}
         </div>
 
+        {infoLibur?.isLibur && (
+  <div className="mb-3 px-3 py-2 rounded-lg bg-red-100 text-red-600 text-sm font-semibold">
+    Hari ini libur: {infoLibur.keterangan}
+  </div>
+)}
+
         {loadingJadwal ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {[...Array(4)].map(
@@ -506,19 +442,19 @@ const AdminBeranda = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            {displayHari.map(
-              (j) => (
-                <ScheduleCard
-                  key={j.id}
-                  type={j.tipe}
-                  grade={j.kelas}
-                  day={j.hari}
-                  subject={j.mapel}
-                  teacher={j.guru}
-                  time={j.time}
-                />
-              )
-            )}
+{displayHari.map((j) => (
+  <ScheduleCard
+    key={j.id}
+    type={j.tipe}
+    grade={j.kelas}
+    day={j.hari}
+    subject={j.mapel}
+    teacher={j.guru}
+    time={j.time}
+    is_libur={j.is_libur}
+    keterangan_libur={j.keterangan_libur}
+  />
+))}
           </div>
         )}
       </section>
@@ -614,32 +550,17 @@ const AdminBeranda = () => {
                         (
                           j
                         ) => (
-                          <ScheduleCard
-                            key={
-                              j.id
-                            }
-                            type={
-                              j.tipe
-                            }
-                            grade={
-                              j.kelas
-                            }
-                            day={
-                              j.hari
-                            }
-                            date={
-                              j.tanggal
-                            }
-                            subject={
-                              j.mapel
-                            }
-                            teacher={
-                              j.guru
-                            }
-                            time={
-                              j.time
-                            }
-                          />
+                        <ScheduleCard
+                          key={j.id}
+                          type={j.tipe}
+                          grade={j.kelas}
+                          day={j.hari}
+                          subject={j.mapel}
+                          teacher={j.guru}
+                          time={j.time}
+                          is_libur={j.is_libur}
+                          keterangan_libur={j.keterangan_libur}
+                        />
                         )
                       )}
                     </div>

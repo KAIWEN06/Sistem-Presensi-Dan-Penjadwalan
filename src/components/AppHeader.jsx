@@ -8,7 +8,7 @@ export default function AppHeader({
   isSidebarOpen,
   setIsSidebarOpen,
   openMobileSidebar,
-  setIsMobileOpen, // support baru tanpa merusak lama
+  setIsMobileOpen,
 }) {
   const location = useLocation();
 
@@ -84,11 +84,15 @@ export default function AppHeader({
     },
     "/admin/jadwal": {
       title: "Kelola Jadwal",
-      desc: "Atur jadwal pembelajaran",
+      desc: "Manajemen jadwal pembelajaran",
     },
     "/admin/akun": {
       title: "Kelola Akun",
       desc: "Manajemen akun pengguna",
+    },
+        "/admin/kalender": {
+      title: "Kalender Akademik",
+      desc: "Manajemen kalender akademik",
     },
 
     "/ortu": {
