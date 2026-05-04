@@ -47,7 +47,7 @@ async function applyFilter(dbQuery, mode, nilai, reqQuery) {
     let tahun = Number(todayManado().slice(0, 4));
     
     if (reqQuery && reqQuery.tahun_id) {
-       const [tAwal, tAkhir] = reqQuery.tahun_id.split("/");
+       const [tAwal, tAkhir] = reqQuery.tahun_id.split("-");
        if (tAwal && tAkhir) {
           const m = Number(nilai); // 1-12
           tahun = (m >= 7) ? Number(tAwal) : Number(tAkhir);
@@ -94,38 +94,49 @@ async function applyFilter(dbQuery, mode, nilai, reqQuery) {
 router.get("/laporan/pengajar/filter", requireAuth, async (req, res) => {
   try {
     const guru = await getGuruLogin(req.user.id);
+    const { tahun_id } = req.query;
+
+    if (!tahun_id) {
+      return res.status(400).json({ error: "tahun_id wajib" });
+    }
 
     const { data, error } = await supabase
       .from("jadwal")
       .select(`
         id_jadwal,
         kelas,
-        mapel:id_mapel(nama)
+        hari,
+        mulai,
+        selesai,
+        jenis,
+        tanggal,
+        mapel (nama)
       `)
       .eq("id_guru", guru.id_guru)
+      .eq("tahun_id", tahun_id)
       .eq("status", "aktif")
-      .eq("jenis", "pelajaran")
-      .order("kelas", { ascending: true });
+      .order("hari", { ascending: true })
+      .order("mulai", { ascending: true });
 
     if (error) throw error;
 
-    const hasil = (data || []).map((x) => ({
-      id: x.id_jadwal,
-      label: `${x.mapel?.nama || "-"} - Kelas ${x.kelas}`,
-    }));
-
-    res.json(hasil);
+    // ❌ JANGAN bikin label lagi
+    // ✔ kirim data mentah
+    res.json(data || []);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 /* ======================================
    LAPORAN PENGAJAR
 ====================================== */
 router.get("/laporan/pengajar", requireAuth, async (req, res) => {
   try {
-    const { jadwal, mode, nilai } = req.query;
+    const { jadwal, mode, bulan, tahun } = req.query;
+    const nilai = bulan;
 
     if (!jadwal) {
       return res.status(400).json({
@@ -207,6 +218,8 @@ router.get("/laporan/wali/filter", requireAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
 
 /* ======================================
    LAPORAN WALI KELAS

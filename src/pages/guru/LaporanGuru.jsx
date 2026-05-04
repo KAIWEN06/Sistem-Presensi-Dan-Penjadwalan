@@ -121,13 +121,15 @@ export default function LaporanGuru() {
           ? "/guru/laporan/pengajar/filter"
           : "/guru/laporan/wali/filter";
 
-      const res = await api.get(url);
+      const res = await api.get(
+        `${url}?tahun_id=${tahunId}`
+      );
       const list = res.data || [];
 
       setOpsi(list);
 
       if (list.length) {
-        setPilih(list[0].id);
+        setPilih(list[0].id_jadwal || list[0].id);
       }
     } catch {}
   };
@@ -141,7 +143,9 @@ export default function LaporanGuru() {
         : tahunId.split("-")[0]; // Jika bulan Jul-Des, ambil tahun awal (misal: 2025)[cite: 1]
 
       const url = tab === "pengajar"
-        ? `/guru/laporan/pengajar?jadwal=${pilih}&mode=${mode}&bulan=${timeline}&tahun=${tahunKalender}`
+        ? pilih === "all"
+          ? `/guru/laporan/pengajar?mode=${mode}&bulan=${timeline}&tahun=${tahunKalender}`
+          : `/guru/laporan/pengajar?jadwal=${pilih}&mode=${mode}&bulan=${timeline}&tahun=${tahunKalender}`
         : `/guru/laporan/wali?kelas=${pilih}&mode=${mode}&bulan=${timeline}&tahun=${tahunKalender}`;
 
       const res = await api.get(url);
@@ -185,539 +189,537 @@ export default function LaporanGuru() {
     );
   }, [rows, search]);
 
-const handlePDF = async () => {
-  if (!filtered.length) {
-    toast.error("Tidak ada data untuk diunduh");
-    return;
-  }
+  const getDominan = (sakit, izin, alpha) => {
+  const data = [
+    { label: "Sakit", value: sakit },
+    { label: "Izin", value: izin },
+    { label: "Alpha", value: alpha },
+  ];
 
+  const max = Math.max(...data.map(d => d.value));
 
-  const LOGO_URL =
-    "https://ccehpokvtkamhkhhhsnt.supabase.co/storage/v1/object/public/public-assets/logo.png";
+  const dominan = data.filter(d => d.value === max && max > 0);
 
-  const doc = new jsPDF("p", "mm", "a4");
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const center = pageWidth / 2;
-  toast.success("Mengunduh laporan...");
+  if (dominan.length === 0) return "Tidak ada";
+  if (dominan.length === 1) return dominan[0].label;
 
-  const loadImageBase64 = async (url) => {
-    try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      
-      return await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () =>
-          resolve(reader.result);
-        reader.readAsDataURL(blob);
-      });
-    } catch {
-      return null;
-    }
+  return `Seimbang (${dominan.map(d => d.label).join(", ")})`;
   };
 
-  const formatTanggal = new Date().toLocaleString(
-    "id-ID",
-    {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+  const handlePDF = async () => {
+    if (!filtered.length) {
+      toast.error("Tidak ada data untuk diunduh");
+      return;
     }
-  );
+    const LOGO_URL =
+      "https://ccehpokvtkamhkhhhsnt.supabase.co/storage/v1/object/public/public-assets/logo.png";
 
-  const periodeText = () => {
-    if (mode === "hari") return timeline;
+    const doc = new jsPDF("p", "mm", "a4");
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const center = pageWidth / 2;
+    toast.success("Mengunduh laporan...");
 
-    if (mode === "bulan") {
-      const bln = daftarBulan.find(
-        (x) => x.id === timeline
-      );
-      return bln?.nama || timeline;
-    }
+    const loadImageBase64 = async (url) => {
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        
+        return await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () =>
+            resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } catch {
+        return null;
+      }
+    };
 
-    if (mode === "semester") {
-      const smt = semesterList.find(
-        (x) => x.id === timeline
-      );
-
-      return smt
-        ? `${smt.tahun_id} - ${smt.nama}`
-        : timeline;
-    }
-
-    return "-";
-  };
-
-  const totalHadir = filtered.reduce(
-    (sum, x) => sum + Number(x.hadir || 0),
-    0
-  );
-
-  const totalSakit = filtered.reduce(
-    (sum, x) => sum + Number(x.sakit || 0),
-    0
-  );
-
-  const totalIzin = filtered.reduce(
-    (sum, x) => sum + Number(x.izin || 0),
-    0
-  );
-
-  const totalAlpha = filtered.reduce(
-    (sum, x) => sum + Number(x.alpha || 0),
-    0
-  );
-
-  const logoBase64 =
-    await loadImageBase64(LOGO_URL);
-
-  /* ===============================
-     PAGE 1 HEADER
-  =============================== */
-  if (logoBase64) {
-    doc.addImage(
-      logoBase64,
-      "PNG",
-      14,
-      10,
-      18,
-      18
+    const formatTanggal = new Date().toLocaleString(
+      "id-ID",
+      {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }
     );
-  }
 
-  doc.setDrawColor(74, 52, 43);
-  doc.setLineWidth(0.5);
-  doc.line(14, 31, 196, 31);
+    const periodeText = () => {
+      if (mode === "hari") return timeline;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(74, 52, 43);
+      if (mode === "bulan") {
+        const bln = daftarBulan.find(
+          (x) => x.id === timeline
+        );
+        return bln?.nama || timeline;
+      }
 
-  doc.text(
-    "SD GMIM 12 MANADO",
-    center,
-    17,
-    { align: "center" }
-  );
+      if (mode === "semester") {
+        const smt = semesterList.find(
+          (x) => x.id === timeline
+        );
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(90, 90, 90);
+        return smt
+          ? `${smt.tahun_id} - ${smt.nama}`
+          : timeline;
+      }
 
-  doc.text(
-    "Sistem Presensi dan Penjadwalan Sekolah",
-    center,
-    23,
-    { align: "center" }
-  );
+      return "-";
+    };
 
-  doc.text(
-    "Jl. Pingkan Matindas No. 44, Kec. Paal Dua, Kota Manado",
-    center,
-    28,
-    { align: "center" }
-  );
+    const totalHadir = filtered.reduce(
+      (sum, x) => sum + Number(x.hadir || 0),
+      0
+    );
 
-  /* TITLE */
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.setTextColor(20, 20, 20);
+    const totalSakit = filtered.reduce(
+      (sum, x) => sum + Number(x.sakit || 0),
+      0
+    );
 
-  doc.text(
-    tab === "pengajar"
-      ? "LAPORAN REKAP PRESENSI PENGAJAR"
-      : "LAPORAN REKAP PRESENSI WALI KELAS",
-    center,
-    40,
-    { align: "center" }
-  );
+    const totalIzin = filtered.reduce(
+      (sum, x) => sum + Number(x.izin || 0),
+      0
+    );
 
-  /* INFO BOX */
-  doc.setFillColor(248, 246, 243);
-  doc.roundedRect(14, 46, 182, 24, 2, 2, "F");
+    const totalAlpha = filtered.reduce(
+      (sum, x) => sum + Number(x.alpha || 0),
+      0
+    );
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
+    const logoBase64 =
+      await loadImageBase64(LOGO_URL);
 
-  doc.text(`Tahun Ajaran : ${tahunId}`, 18, 54);
-  doc.text(`Periode : ${periodeText()}`, 18, 60);
-  doc.text(`Dicetak : ${formatTanggal}`, 18, 66);
-  doc.text(`Jumlah Data : ${filtered.length}`, 110, 54);
+    /* ===============================
+      PAGE 1 HEADER
+    =============================== */
+    if (logoBase64) {
+      doc.addImage(
+        logoBase64,
+        "PNG",
+        14,
+        10,
+        18,
+        18
+      );
+    }
 
-  /* SUMMARY */
-  const y = 78;
-  const w = 42;
-  const g = 4;
-
-  const statBox = (
-    x,
-    title,
-    value,
-    r,
-    gr,
-    b
-  ) => {
-    doc.setFillColor(r, gr, b);
-    doc.roundedRect(x, y, w, 18, 2, 2, "F");
-
-    doc.setFontSize(9);
-    doc.setTextColor(80, 80, 80);
-    doc.text(title, x + 3, y + 7);
+    doc.setDrawColor(74, 52, 43);
+    doc.setLineWidth(0.5);
+    doc.line(14, 31, 196, 31);
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(30, 30, 30);
-    doc.text(String(value), x + 3, y + 14);
-  };
-
-  statBox(
-    14,
-    "Hadir",
-    totalHadir,
-    232,
-    245,
-    233
-  );
-
-  statBox(
-    14 + w + g,
-    "Sakit",
-    totalSakit,
-    227,
-    242,
-    253
-  );
-
-  statBox(
-    14 + (w + g) * 2,
-    "Izin",
-    totalIzin,
-    255,
-    248,
-    225
-  );
-
-  statBox(
-    14 + (w + g) * 3,
-    "Alpha",
-    totalAlpha,
-    255,
-    235,
-    238
-  );
-
-  /* ===============================
-     TABLE AUTO PAGE
-  =============================== */
-  autoTable(doc, {
-    startY: 102,
-    head: [
-      [
-        "No",
-        "Nama",
-        "Kelas",
-        "Hadir",
-        "Sakit",
-        "Izin",
-        "Alpha",
-      ],
-    ],
-    body: filtered.map((x, i) => [
-      i + 1,
-      x.nama,
-      `Kelas ${x.kelas}`,
-      x.hadir,
-      x.sakit,
-      x.izin,
-      x.alpha,
-    ]),
-    theme: "grid",
-    styles: {
-      fontSize: 9,
-      cellPadding: 3,
-      lineColor: [225, 225, 225],
-      lineWidth: 0.1,
-    },
-    headStyles: {
-      fillColor: [74, 52, 43],
-      textColor: [255, 255, 255],
-      halign: "center",
-    },
-    bodyStyles: {
-      halign: "center",
-    },
-    columnStyles: {
-      1: { halign: "left" },
-    },
-    alternateRowStyles: {
-      fillColor: [250, 250, 250],
-    },
-  });
-
-  /* ===============================
-     TANDA TANGAN HALAMAN TERAKHIR TABEL
-  =============================== */
-  const lastTablePage =
-    doc.internal.getNumberOfPages();
-
-  doc.setPage(lastTablePage);
-
-  const finalY =
-    doc.lastAutoTable.finalY;
-
-  if (finalY < 240) {
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-
-    doc.text(
-      "Mengetahui,",
-      145,
-      finalY + 12
-    );
-
-    doc.text(
-      "Wali Kelas",
-      145,
-      finalY + 18
-    );
-
-    doc.text(
-      "_____________________",
-      145,
-      finalY + 40
-    );
-  }
-
-  /* ===============================
-     HALAMAN ANALISIS
-  =============================== */
-  doc.addPage();
-
-  const analysisPage =
-    doc.internal.getNumberOfPages();
-
-  doc.setPage(analysisPage);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
-  doc.setTextColor(74, 52, 43);
-
-  doc.text(
-    "ANALISIS KEHADIRAN",
-    center,
-    18,
-    { align: "center" }
-  );
-
-  const totalAll =
-    totalHadir +
-    totalSakit +
-    totalIzin +
-    totalAlpha;
-
-  const persen = (n) =>
-    totalAll
-      ? ((n / totalAll) * 100).toFixed(1)
-      : 0;
-
-  const drawBar = (
-    yPos,
-    label,
-    val,
-    color,
-    pct
-  ) => {
-    doc.setFontSize(10);
-    doc.setTextColor(50, 50, 50);
-
-    doc.text(label, 20, yPos);
-
-    doc.setFillColor(
-      color[0],
-      color[1],
-      color[2]
-    );
-
-    doc.roundedRect(
-      52,
-      yPos - 4,
-      (pct / 100) * 110,
-      6,
-      1,
-      1,
-      "F"
-    );
-
-    doc.text(
-      `${val} (${pct}%)`,
-      165,
-      yPos
-    );
-  };
-
-  drawBar(
-    50,
-    "Hadir",
-    totalHadir,
-    [34, 197, 94],
-    persen(totalHadir)
-  );
-
-  drawBar(
-    65,
-    "Sakit",
-    totalSakit,
-    [59, 130, 246],
-    persen(totalSakit)
-  );
-
-  drawBar(
-    80,
-    "Izin",
-    totalIzin,
-    [234, 179, 8],
-    persen(totalIzin)
-  );
-
-  drawBar(
-    95,
-    "Alpha",
-    totalAlpha,
-    [239, 68, 68],
-    persen(totalAlpha)
-  );
-
-  doc.setFillColor(248, 246, 243);
-  doc.roundedRect(
-    14,
-    118,
-    182,
-    50,
-    2,
-    2,
-    "F"
-  );
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text(
-    "Catatan Evaluasi",
-    18,
-    130
-  );
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-
-  doc.text(
-    `• Persentase kehadiran: ${persen(
-      totalHadir
-    )}%`,
-    18,
-    140
-  );
-
-  doc.text(
-    `• Total ketidakhadiran: ${
-      totalSakit +
-      totalIzin +
-      totalAlpha
-    }`,
-    18,
-    148
-  );
-
-  doc.text(
-    `• Status terbanyak selain hadir: ${
-      Math.max(
-        totalSakit,
-        totalIzin,
-        totalAlpha
-      ) === totalAlpha
-        ? "Alpha"
-        : Math.max(
-            totalSakit,
-            totalIzin,
-            totalAlpha
-          ) === totalSakit
-        ? "Sakit"
-        : "Izin"
-    }`,
-    18,
-    156
-  );
-
-  /* ===============================
-     FOOTER PREMIUM ALL PAGE
-  =============================== */
-  const totalPages =
-    doc.internal.getNumberOfPages();
-
-  for (
-    let i = 1;
-    i <= totalPages;
-    i++
-  ) {
-    doc.setPage(i);
-
-    doc.setDrawColor(
-      220,
-      220,
-      220
-    );
-
-    doc.setLineWidth(0.2);
-
-    doc.line(
-      14,
-      286,
-      196,
-      286
-    );
-
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
-    doc.setFontSize(8);
-    doc.setTextColor(
-      110,
-      110,
-      110
-    );
+    doc.setFontSize(16);
+    doc.setTextColor(74, 52, 43);
 
     doc.text(
       "SD GMIM 12 MANADO",
-      14,
-      291
+      center,
+      17,
+      { align: "center" }
     );
 
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(90, 90, 90);
+
     doc.text(
-      formatTanggal,
-      pageWidth / 2,
-      291,
+      "Sistem Presensi dan Penjadwalan Sekolah",
+      center,
+      23,
       { align: "center" }
     );
 
     doc.text(
-      `Halaman ${i} dari ${totalPages}`,
-      196,
-      291,
-      { align: "right" }
+      "Jl. Pingkan Matindas No. 44, Kec. Paal Dua, Kota Manado",
+      center,
+      28,
+      { align: "center" }
     );
-  }
 
-  /* SAVE */
-  doc.save(
-    tab === "pengajar"
-      ? "Laporan-Pengajar.pdf"
-      : "Laporan-Wali-Kelas.pdf"
-  );
-  toast.success("Laporan berhasil diunduh");
-};
+    /* TITLE */
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(20, 20, 20);
+
+    doc.text(
+      tab === "pengajar"
+        ? "LAPORAN REKAP PRESENSI PENGAJAR"
+        : "LAPORAN REKAP PRESENSI WALI KELAS",
+      center,
+      40,
+      { align: "center" }
+    );
+
+    /* INFO BOX */
+    doc.setFillColor(248, 246, 243);
+    doc.roundedRect(14, 46, 182, 24, 2, 2, "F");
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+
+    doc.text(`Tahun Ajaran : ${tahunId}`, 18, 54);
+    doc.text(`Periode : ${periodeText()}`, 18, 60);
+    doc.text(`Dicetak : ${formatTanggal}`, 18, 66);
+    doc.text(`Jumlah Data : ${filtered.length}`, 110, 54);
+
+    /* SUMMARY */
+    const y = 78;
+    const w = 42;
+    const g = 4;
+
+    const statBox = (
+      x,
+      title,
+      value,
+      r,
+      gr,
+      b
+    ) => {
+      doc.setFillColor(r, gr, b);
+      doc.roundedRect(x, y, w, 18, 2, 2, "F");
+
+      doc.setFontSize(9);
+      doc.setTextColor(80, 80, 80);
+      doc.text(title, x + 3, y + 7);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(30, 30, 30);
+      doc.text(String(value), x + 3, y + 14);
+    };
+
+    statBox(
+      14,
+      "Hadir",
+      totalHadir,
+      232,
+      245,
+      233
+    );
+
+    statBox(
+      14 + w + g,
+      "Sakit",
+      totalSakit,
+      227,
+      242,
+      253
+    );
+
+    statBox(
+      14 + (w + g) * 2,
+      "Izin",
+      totalIzin,
+      255,
+      248,
+      225
+    );
+
+    statBox(
+      14 + (w + g) * 3,
+      "Alpha",
+      totalAlpha,
+      255,
+      235,
+      238
+    );
+
+    /* ===============================
+      TABLE AUTO PAGE
+    =============================== */
+    autoTable(doc, {
+      startY: 102,
+      head: [
+        [
+          "No",
+          "Nama",
+          "Kelas",
+          "Hadir",
+          "Sakit",
+          "Izin",
+          "Alpha",
+        ],
+      ],
+      body: filtered.map((x, i) => [
+        i + 1,
+        x.nama,
+        `Kelas ${x.kelas}`,
+        x.hadir,
+        x.sakit,
+        x.izin,
+        x.alpha,
+      ]),
+      theme: "grid",
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+        lineColor: [225, 225, 225],
+        lineWidth: 0.1,
+      },
+      headStyles: {
+        fillColor: [74, 52, 43],
+        textColor: [255, 255, 255],
+        halign: "center",
+      },
+      bodyStyles: {
+        halign: "center",
+      },
+      columnStyles: {
+        1: { halign: "left" },
+      },
+      alternateRowStyles: {
+        fillColor: [250, 250, 250],
+      },
+    });
+
+    /* ===============================
+      TANDA TANGAN HALAMAN TERAKHIR TABEL
+    =============================== */
+    const lastTablePage =
+      doc.internal.getNumberOfPages();
+
+    doc.setPage(lastTablePage);
+
+    const finalY =
+      doc.lastAutoTable.finalY;
+
+    if (finalY < 240) {
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+
+      doc.text(
+        "Mengetahui,",
+        145,
+        finalY + 12
+      );
+
+      doc.text(
+        "Wali Kelas",
+        145,
+        finalY + 18
+      );
+
+      doc.text(
+        "_____________________",
+        145,
+        finalY + 40
+      );
+    }
+
+    /* ===============================
+      HALAMAN ANALISIS
+    =============================== */
+    doc.addPage();
+
+    const analysisPage =
+      doc.internal.getNumberOfPages();
+
+    doc.setPage(analysisPage);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.setTextColor(74, 52, 43);
+
+    doc.text(
+      "ANALISIS KEHADIRAN",
+      center,
+      18,
+      { align: "center" }
+    );
+
+    const totalAll =
+      totalHadir +
+      totalSakit +
+      totalIzin +
+      totalAlpha;
+
+    const persen = (n) =>
+      totalAll
+        ? ((n / totalAll) * 100).toFixed(1)
+        : 0;
+
+    const drawBar = (
+      yPos,
+      label,
+      val,
+      color,
+      pct
+    ) => {
+      doc.setFontSize(10);
+      doc.setTextColor(50, 50, 50);
+
+      doc.text(label, 20, yPos);
+
+      doc.setFillColor(
+        color[0],
+        color[1],
+        color[2]
+      );
+
+      doc.roundedRect(
+        52,
+        yPos - 4,
+        (pct / 100) * 110,
+        6,
+        1,
+        1,
+        "F"
+      );
+
+      doc.text(
+        `${val} (${pct}%)`,
+        165,
+        yPos
+      );
+    };
+
+    drawBar(
+      50,
+      "Hadir",
+      totalHadir,
+      [34, 197, 94],
+      persen(totalHadir)
+    );
+
+    drawBar(
+      65,
+      "Sakit",
+      totalSakit,
+      [59, 130, 246],
+      persen(totalSakit)
+    );
+
+    drawBar(
+      80,
+      "Izin",
+      totalIzin,
+      [234, 179, 8],
+      persen(totalIzin)
+    );
+
+    drawBar(
+      95,
+      "Alpha",
+      totalAlpha,
+      [239, 68, 68],
+      persen(totalAlpha)
+    );
+
+    doc.setFillColor(248, 246, 243);
+    doc.roundedRect(
+      14,
+      118,
+      182,
+      50,
+      2,
+      2,
+      "F"
+    );
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(
+      "Catatan Evaluasi",
+      18,
+      130
+    );
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+
+    doc.text(
+      `• Persentase kehadiran: ${persen(
+        totalHadir
+      )}%`,
+      18,
+      140
+    );
+
+    doc.text(
+      `• Total ketidakhadiran: ${
+        totalSakit +
+        totalIzin +
+        totalAlpha
+      }`,
+      18,
+      148
+    );
+
+    doc.text(
+      `• Status terbanyak selain hadir: ${getDominan(totalSakit, totalIzin, totalAlpha)}`,
+      18,
+      156
+    );
+    
+    const totalPages =
+      doc.internal.getNumberOfPages();
+
+    for (
+      let i = 1;
+      i <= totalPages;
+      i++
+    ) {
+      doc.setPage(i);
+
+      doc.setDrawColor(
+        220,
+        220,
+        220
+      );
+
+      doc.setLineWidth(0.2);
+
+      doc.line(
+        14,
+        286,
+        196,
+        286
+      );
+
+      doc.setFont(
+        "helvetica",
+        "normal"
+      );
+
+      doc.setFontSize(8);
+      doc.setTextColor(
+        110,
+        110,
+        110
+      );
+
+      doc.text(
+        "SD GMIM 12 MANADO",
+        14,
+        291
+      );
+
+      doc.text(
+        formatTanggal,
+        pageWidth / 2,
+        291,
+        { align: "center" }
+      );
+
+      doc.text(
+        `Halaman ${i} dari ${totalPages}`,
+        196,
+        291,
+        { align: "right" }
+      );
+    }
+
+    /* SAVE */
+    doc.save(
+      tab === "pengajar"
+        ? "Laporan-Pengajar.pdf"
+        : "Laporan-Wali-Kelas.pdf"
+    );
+    toast.success("Laporan berhasil diunduh");
+  };
 
   const totalHadir = filtered.reduce(
     (a, b) => a + Number(b.hadir || 0),
@@ -800,20 +802,38 @@ const handlePDF = async () => {
 
           <div className="xl:col-span-3">
             <SelectBox
-              value={pilih}
-              onChange={(e) =>
-                setPilih(e.target.value)
-              }
-            >
-              {opsi.map((x) => (
-                <option
-                  key={x.id}
-                  value={x.id}
-                >
-                  {x.label || x.nama}
-                </option>
-              ))}
-            </SelectBox>
+  value={pilih}
+  onChange={(e) => setPilih(e.target.value)}
+>
+
+  {/* ===== PENGAJAR ===== */}
+  {tab === "pengajar" &&
+    opsi.map((j) => {
+      const isUjian = j.jenis === "ujian";
+
+      const subtitle = isUjian
+        ? `Ujian — ${j.tanggal || "-"}`
+        : `${j.hari || "-"}, ${j.mulai?.slice(0,5) || "--:--"}-${j.selesai?.slice(0,5) || "--:--"}`;
+
+      return (
+        <option
+          key={j.id_jadwal || `${j.kelas}-${j.hari}-${j.mulai}`}
+          value={j.id_jadwal}
+        >
+          {`${j.mapel?.nama || "-"} · Kelas ${j.kelas || "-"} — ${subtitle}`}
+        </option>
+      );
+    })}
+
+  {/* ===== WALI ===== */}
+  {tab === "wali" &&
+    opsi.map((k) => (
+      <option key={k.id} value={k.id}>
+        {k.nama || "-"}
+      </option>
+    ))}
+
+</SelectBox>
           </div>
 
           <div className="xl:col-span-3">
