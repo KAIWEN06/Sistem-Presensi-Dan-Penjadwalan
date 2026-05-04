@@ -136,10 +136,13 @@ export default function LaporanGuru() {
     try {
       setLoading(true);
 
-      const url =
-        tab === "pengajar"
-          ? `/guru/laporan/pengajar?jadwal=${pilih}&mode=${mode}&nilai=${timeline}&tahun_id=${tahunId}`
-          : `/guru/laporan/wali?kelas=${pilih}&mode=${mode}&nilai=${timeline}&tahun_id=${tahunId}`;
+      const tahunKalender = parseInt(timeline) <= 6 
+        ? tahunId.split("-")[1] // Jika bulan Jan-Jun, ambil tahun akhir (misal: 2026)
+        : tahunId.split("-")[0]; // Jika bulan Jul-Des, ambil tahun awal (misal: 2025)[cite: 1]
+
+      const url = tab === "pengajar"
+        ? `/guru/laporan/pengajar?jadwal=${pilih}&mode=${mode}&bulan=${timeline}&tahun=${tahunKalender}`
+        : `/guru/laporan/wali?kelas=${pilih}&mode=${mode}&bulan=${timeline}&tahun=${tahunKalender}`;
 
       const res = await api.get(url);
       setRows(res.data || []);
