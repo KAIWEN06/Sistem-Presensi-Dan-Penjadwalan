@@ -7,11 +7,19 @@ router.get("/:nis", requireAuth, async (req, res) => {
   try {
     const { nis } = req.params;
     const { bulan, tahun, semester, hari } = req.query;
+    console.log("LOG DEBUG SD GMIM 12:");
+    console.log("Param dari Frontend:", { bulan, tahun });
+    console.log("Total data dari DB:", rows?.length);
 
     /* ================= AMBIL DATA DASAR ================= */
     const { data: rows, error } = await supabase
       .from("absensi")
-      .select("*")
+      .select(
+        `
+        *,
+        mapel (nama) 
+      `
+      )
       .eq("nis", nis)
       .order("tanggal", { ascending: false });
 
@@ -108,19 +116,7 @@ router.get("/:nis", requireAuth, async (req, res) => {
       stats.total++;
 
       /* ================= NAMA MAPEL ================= */
-      let namaMapel = "-";
-
-      if (r.id_mapel) {
-        const { data: mapelRows } = await supabase
-          .from("mapel")
-          .select("nama")
-          .eq("id_mapel", r.id_mapel)
-          .limit(1);
-
-        if (mapelRows && mapelRows.length > 0) {
-          namaMapel = mapelRows[0].nama;
-        }
-      }
+      let namaMapel = r.mapel?.nama || "-";
 
       /* ================= FORMAT TANGGAL ================= */
       const [y, m, d] = String(r.tanggal).split("-");
