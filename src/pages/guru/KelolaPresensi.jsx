@@ -92,11 +92,18 @@ const KelolaPresensi = () => {
   /* =========================
      LOAD SISWA
   ========================= */
+
+
   const handleAbsenSekarang =
     async (
       j,
       customTanggal = tanggal
     ) => {
+
+      if (j.is_libur) {
+      toast.error("Hari ini libur, tidak bisa presensi");
+      return;
+    }
       setSelectedJadwal(j);
       setLoadingSiswa(true);
 
@@ -283,34 +290,37 @@ const KelolaPresensi = () => {
     }
   };
 
-  const badgeJadwal = (
-    status
-  ) => {
-    if (status === "sudah") {
-      return (
-        <span className="inline-flex items-center justify-center min-h-[32px] px-3 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
-          Sudah
-        </span>
-      );
-    }
-
-    if (
-      status ===
-      "terlambat"
-    ) {
-      return (
-        <span className="inline-flex items-center justify-center min-h-[32px] px-3 rounded-full text-xs font-bold bg-rose-50 text-rose-700">
-          Terlambat
-        </span>
-      );
-    }
-
+const badgeJadwal = (status, is_libur) => {
+  if (is_libur) {
     return (
-      <span className="inline-flex items-center justify-center min-h-[32px] px-3 rounded-full text-xs font-bold bg-amber-50 text-amber-700">
-        Belum
+      <span className="inline-flex items-center justify-center min-h-[32px] px-3 rounded-full text-xs font-bold bg-red-100 text-red-600">
+        Libur
       </span>
     );
-  };
+  }
+
+  if (status === "sudah") {
+    return (
+      <span className="inline-flex items-center justify-center min-h-[32px] px-3 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
+        Sudah
+      </span>
+    );
+  }
+
+  if (status === "terlambat") {
+    return (
+      <span className="inline-flex items-center justify-center min-h-[32px] px-3 rounded-full text-xs font-bold bg-rose-50 text-rose-700">
+        Terlambat
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center justify-center min-h-[32px] px-3 rounded-full text-xs font-bold bg-amber-50 text-amber-700">
+      Belum
+    </span>
+  );
+};
 
   return (
     <section className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
@@ -416,37 +426,45 @@ const KelolaPresensi = () => {
             )}
 
             {jadwal.map((j, i) => (
-              <div
-                key={i}
-                className={`snap-start min-w-[280px] rounded-3xl bg-white border p-5 shadow-sm transition-all ${
-                  selectedJadwal?.id_jadwal ===
-                  j.id_jadwal
-                    ? "border-[#715445] ring-2 ring-[#715445]/20"
-                    : "border-gray-100"
-                }`}
-              >
+                <div
+                  key={i}
+                  className={`snap-start min-w-[280px] rounded-3xl border p-5 shadow-sm transition-all ${
+                    j.is_libur
+                      ? "bg-red-50 border-red-200"
+                      : selectedJadwal?.id_jadwal === j.id_jadwal
+                      ? "border-[#715445] ring-2 ring-[#715445]/20"
+                      : "bg-white border-gray-100"
+                  }`}
+                >
                 <div className="flex justify-between items-center mb-3">
                   <p className="font-black text-[#715445]">
                     {j.waktu}
                   </p>
 
-                  {badgeJadwal(
-                    j.status_presensi
-                  )}
+                  {badgeJadwal(j.status_presensi, j.is_libur)}
                 </div>
 
-                <p className="text-sm text-gray-600 mb-4">
-                  {j.kelas}
+              <p className="text-sm text-gray-600 mb-4">
+                {j.kelas}
+              </p>
+
+              {j.is_libur && (
+                <p className="text-red-500 text-xs font-bold mb-2">
+                  Libur: {j.keterangan_libur}
                 </p>
+              )}
 
                 <button
-                  onClick={() =>
-                    handleAbsenSekarang(
-                      j
-                    )
-                  }
-                  className="w-full inline-flex items-center justify-center min-h-[44px] rounded-2xl border border-gray-200 font-bold hover:bg-gray-50 transition-all"
-                >
+                    disabled={j.is_libur}
+                    onClick={() =>
+                      !j.is_libur && handleAbsenSekarang(j)
+                    }
+                    className={`w-full inline-flex items-center justify-center min-h-[44px] rounded-2xl border font-bold transition-all ${
+                      j.is_libur
+                        ? "bg-red-50 border-red-200 text-red-400 cursor-not-allowed"
+                        : "border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
                   {j.status_presensi ===
                   "sudah"
                     ? "Edit Presensi"

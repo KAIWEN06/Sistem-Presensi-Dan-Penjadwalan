@@ -202,8 +202,17 @@ const JadwalOrtu = () => {
                       items.map((item, idx) => (
                         <div
                           key={idx}
-                          className="rounded-xl bg-gray-50 p-3"
+                          className={`rounded-xl p-3 ${
+                            item.is_libur
+                              ? "bg-red-50 border border-red-200"
+                              : "bg-gray-50"
+                          }`}
                         >
+                          {item.is_libur && (
+                            <p className="text-red-500 text-xs font-bold mt-1">
+                              Libur: {item.keterangan_libur}
+                            </p>
+                          )}
                           <p className="text-xs text-[#5A3E36] font-semibold">
                             {item.jam}
                           </p>
@@ -231,8 +240,17 @@ const JadwalOrtu = () => {
               ujianList.map((item, idx) => (
                 <div
                   key={idx}
-                  className="bg-white rounded-2xl p-5"
+                  className={`rounded-2xl p-5 ${
+                    item.is_libur
+                      ? "bg-red-50 border border-red-200"
+                      : "bg-white"
+                  }`}
                 >
+                  {item.is_libur && (
+                    <p className="text-red-500 text-xs font-bold mt-1">
+                      Libur: {item.keterangan_libur}
+                    </p>
+                  )}
                   <p className="text-xs font-semibold text-[#5A3E36] uppercase">
                     Jadwal Ujian
                   </p>

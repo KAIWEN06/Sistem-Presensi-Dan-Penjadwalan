@@ -253,11 +253,14 @@ const [lastUpdate, setLastUpdate] =
         <div className="h-16 rounded-lg bg-gray-200 animate-pulse"></div>
       </div>
     ) : subjects.length > 0 ? (
+      
 subjects.map((s, i) => {
+  const isLibur = s.is_libur;
   const status = s.status?.toLowerCase();
 
-  const warna =
-    status === "hadir"
+  const warna = isLibur
+      ? "bg-red-50 border-red-200"
+      : status === "hadir"
       ? "bg-green-50 border-green-200"
       : status === "izin"
       ? "bg-yellow-50 border-yellow-200"
@@ -291,8 +294,14 @@ subjects.map((s, i) => {
           </p>
 
           <p className={`text-xs font-semibold ${textColor}`}>
-            {s.status}
+          {isLibur ? "Libur" : s.status}
+        </p>
+
+        {isLibur && (
+          <p className="text-red-500 text-xs font-bold mt-1">
+            {s.keterangan_libur}
           </p>
+        )}
         </div>
       </div>
 

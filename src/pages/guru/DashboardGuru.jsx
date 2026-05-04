@@ -92,22 +92,30 @@ const DashboardGuru = () => {
     });
   };
 
-  const statusBadge = (status) => {
-    const done = status === "sudah";
-
+const statusBadge = (status, is_libur) => {
+  if (is_libur) {
     return (
-      <span
-        className={`inline-flex items-center justify-center gap-2 min-h-[38px] px-3 rounded-full text-xs font-bold whitespace-nowrap ${
-          done
-            ? "bg-emerald-100 text-emerald-700"
-            : "bg-amber-100 text-amber-700"
-        }`}
-      >
-        {done ? <FaCheckCircle /> : <FaClock />}
-        {done ? "Sudah" : "Belum"}
+      <span className="inline-flex items-center px-3 rounded-full text-xs font-bold bg-red-100 text-red-600">
+        Libur
       </span>
     );
-  };
+  }
+
+  const done = status === "sudah";
+
+  return (
+    <span
+      className={`inline-flex items-center justify-center gap-2 min-h-[38px] px-3 rounded-full text-xs font-bold whitespace-nowrap ${
+        done
+          ? "bg-emerald-100 text-emerald-700"
+          : "bg-amber-100 text-amber-700"
+      }`}
+    >
+      {done ? <FaCheckCircle /> : <FaClock />}
+      {done ? "Sudah" : "Belum"}
+    </span>
+  );
+};
 
   const StatCard = ({
     title,
@@ -205,10 +213,13 @@ const DashboardGuru = () => {
             jadwalHariIni.map((item, i) => (
               <button
                 key={i}
-                onClick={() =>
-                  handleOpenPresensi(item)
-                }
-                className="w-full text-left rounded-3xl bg-white border border-gray-100 shadow-sm p-4 sm:p-5 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] transition-all"
+                disabled={item.is_libur}
+                onClick={() => handleOpenPresensi(item)}
+                className={`w-full text-left rounded-3xl p-4 sm:p-5 transition-all ${
+                  item.is_libur
+                    ? "bg-red-50 border-red-200 cursor-not-allowed opacity-70"
+                    : "bg-white border-gray-100 hover:shadow-md"
+                }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
@@ -219,10 +230,17 @@ const DashboardGuru = () => {
                     <p className="text-sm sm:text-base text-gray-700 font-semibold">
                       {item.kelas}
                     </p>
+
+                    {item.is_libur && (
+                      <p className="text-red-500 text-xs font-bold mt-1">
+                        Libur: {item.keterangan_libur}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-3 flex-wrap">
-                    {statusBadge(item.status)}
+                    {statusBadge(item.status, item.is_libur)}
+
 
                     <span className="w-10 h-10 rounded-2xl bg-[#715445] text-white inline-flex items-center justify-center">
                       <FaArrowRight size={13} />

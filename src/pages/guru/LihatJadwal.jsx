@@ -326,7 +326,11 @@ function HariCard({
                 key={
                   idx
                 }
-                className="rounded-2xl bg-white border border-gray-100 p-3"
+                className={`rounded-2xl border p-3 ${
+                item.is_libur
+                  ? "bg-red-50 border-red-200"
+                  : "bg-white border-gray-100"
+              }`}
               >
                 <p className="text-xs font-black text-[#715445]">
                   {
@@ -339,6 +343,12 @@ function HariCard({
                     item.mapel
                   }
                 </p>
+
+                {item.is_libur && (
+                  <p className="text-red-500 text-xs font-bold mt-1">
+                    Libur: {item.keterangan_libur}
+                  </p>
+                )}
               </div>
             )
           )

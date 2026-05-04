@@ -9,6 +9,45 @@ const {
   timeManado,
 } = require("../utils/timezone");
 
+function cekLibur(kalenderList, tanggal, kelasId = null) {
+  const normalizeDate = (d) => d ? String(d).slice(0,10) : null;
+
+  for (const k of kalenderList || []) {
+    const mulai = normalizeDate(k.tanggal_mulai);
+    const selesai = normalizeDate(k.tanggal_selesai);
+
+    const kenaTanggal =
+      tanggal && tanggal >= mulai && tanggal <= selesai;
+
+    if (!kenaTanggal) continue;
+    if (k.jenis !== "libur") continue;
+
+    // semua kelas
+    if (k.semua_kelas) {
+      return {
+        is_libur: true,
+        keterangan: k.keterangan
+      };
+    }
+
+    // kelas tertentu
+    if (kelasId !== null && kelasId !== undefined) {
+      const match = k.kalender_kelas?.some(
+        (kk) => String(kk.kelas) === String(kelasId)
+      );
+
+      if (match) {
+        return {
+          is_libur: true,
+          keterangan: k.keterangan
+        };
+      }
+    }
+  }
+
+  return { is_libur: false, keterangan: null };
+}
+
 function capitalize(text = "") {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -510,58 +549,71 @@ router.get("/dashboard", requireAuth, async (req, res) => {
 
     const jadwalHariIniFormatted = [];
 
+    const { data: kalenderList } = await supabase
+  .from("kalender_akademik")
+  .select(`
+    tanggal_mulai,
+    tanggal_selesai,
+    keterangan,
+    jenis,
+    semua_kelas,
+    kalender_kelas (kelas)
+  `)
+  .lte("tanggal_mulai", today)
+  .gte("tanggal_selesai", today);
+
     for (const j of semuaHariIni) {
-      const { count } =
-        await supabase
-          .from("kelas_siswa")
-          .select("*", {
-            count: "exact",
-            head: true,
-          })
-          .eq("kelas", j.kelas)
-          .eq("status", "aktif");
 
-      const {
-        data: cekAbsen,
-      } = await supabase
-        .from("absensi")
-        .select("id")
-        .eq("id_jadwal", j.id_jadwal)
-        .eq("tanggal", today)
-        .limit(1);
+  const libur = cekLibur(kalenderList || [], today, j.kelas);
 
-      let stat = "belum";
+  const { count } =
+    await supabase
+      .from("kelas_siswa")
+      .select("*", {
+        count: "exact",
+        head: true,
+      })
+      .eq("kelas", j.kelas)
+      .eq("status", "aktif");
 
-      if (
-        cekAbsen &&
-        cekAbsen.length > 0
-      ) {
-        stat = "sudah";
-        sudahPresensi++;
-      } else {
-        belumPresensi++;
-      }
+  const {
+    data: cekAbsen,
+  } = await supabase
+    .from("absensi")
+    .select("id")
+    .eq("id_jadwal", j.id_jadwal)
+    .eq("tanggal", today)
+    .limit(1);
 
-      totalSiswa += count || 0;
+  let stat = "belum";
 
-      jadwalHariIniFormatted.push({
-        id_jadwal: j.id_jadwal,
-        kelas_id: j.kelas,
-        id_mapel: j.id_mapel,
+  if (libur.is_libur) {
+    stat = "libur";
+  } else if (cekAbsen && cekAbsen.length > 0) {
+    stat = "sudah";
+    sudahPresensi++;
+  } else {
+    belumPresensi++;
+  }
 
-        jam: `${String(
-          j.mulai
-        ).slice(0, 5)} - ${String(
-          j.selesai
-        ).slice(0, 5)}`,
+  totalSiswa += count || 0;
 
-        kelas: `Kelas ${j.kelas} - ${
-          j.mapel?.nama || "-"
-        }`,
+  jadwalHariIniFormatted.push({
+    id_jadwal: j.id_jadwal,
+    kelas_id: j.kelas,
+    id_mapel: j.id_mapel,
 
-        status: stat,
-      });
-    }
+    jam: `${String(j.mulai).slice(0, 5)} - ${String(j.selesai).slice(0, 5)}`,
+
+    kelas: `Kelas ${j.kelas} - ${j.mapel?.nama || "-"}`,
+
+    status: stat,
+
+    // 🔥 TAMBAHAN
+    is_libur: libur.is_libur,
+    keterangan_libur: libur.keterangan
+  });
+}
 
     const jadwalBesokFormatted =
       semuaBesok.map((j) => ({
@@ -637,10 +689,6 @@ router.get("/kelas-ajar", requireAuth, async (req, res) => {
         dayNameManado(tanggal)
       );
 
-    /* ==========================
-       JADWAL PELAJARAN
-       SAMA SEPERTI KELOLA ADMIN
-    ========================== */
     const {
       data: pelajaran,
       error: err1,
@@ -708,51 +756,59 @@ router.get("/kelas-ajar", requireAuth, async (req, res) => {
     ========================== */
     const hasil = [];
 
+    const { data: kalenderList } = await supabase
+  .from("kalender_akademik")
+  .select(`
+    tanggal_mulai,
+    tanggal_selesai,
+    keterangan,
+    jenis,
+    semua_kelas,
+    kalender_kelas (kelas)
+  `)
+  .lte("tanggal_mulai", tanggal)
+  .gte("tanggal_selesai", tanggal);
+
+
     for (const j of semua) {
-      const {
-        data: cekAbsen,
-      } = await supabase
-        .from("absensi")
-        .select("id")
-        .eq("id_jadwal", j.id_jadwal)
-        .eq("tanggal", tanggal)
-        .limit(1);
 
-      let statusPresensi =
-        "belum";
+  const libur = cekLibur(kalenderList || [], tanggal, j.kelas);
 
-      if (
-        cekAbsen &&
-        cekAbsen.length > 0
-      ) {
-        statusPresensi =
-          "sudah";
-      } else if (
-        tanggal < today
-      ) {
-        statusPresensi =
-          "terlambat";
-      }
+  if (libur.is_libur) continue;
 
-      hasil.push({
-        id_jadwal: j.id_jadwal,
-        kelas_id: j.kelas,
-        id_mapel: j.id_mapel,
+  const {
+    data: cekAbsen,
+  } = await supabase
+    .from("absensi")
+    .select("id")
+    .eq("id_jadwal", j.id_jadwal)
+    .eq("tanggal", tanggal)
+    .limit(1);
 
-        waktu: `${String(
-          j.mulai
-        ).slice(0, 5)} - ${String(
-          j.selesai
-        ).slice(0, 5)}`,
+  let statusPresensi = "belum";
 
-        kelas: `Kelas ${j.kelas} - ${
-          j.mapel?.nama || "-"
-        }`,
+  if (cekAbsen && cekAbsen.length > 0) {
+    statusPresensi = "sudah";
+  } else if (tanggal < today) {
+    statusPresensi = "terlambat";
+  }
 
-        status_presensi:
-          statusPresensi,
-      });
-    }
+  hasil.push({
+    id_jadwal: j.id_jadwal,
+    kelas_id: j.kelas,
+    id_mapel: j.id_mapel,
+
+    waktu: `${String(j.mulai).slice(0,5)} - ${String(j.selesai).slice(0,5)}`,
+
+    kelas: `Kelas ${j.kelas} - ${j.mapel?.nama || "-"}`,
+
+    status_presensi: statusPresensi,
+
+    // 🔥 ini tetap aman
+    is_libur: libur.is_libur,
+    keterangan_libur: libur.keterangan
+  });
+}
 
     res.json(hasil);
 
@@ -777,7 +833,17 @@ router.get("/presensi-tertunda", requireAuth, async (req, res) => {
 
     const hasil = [];
 
-    /* cek 7 hari ke belakang */
+    const { data: kalenderList } = await supabase
+    .from("kalender_akademik")
+    .select(`
+      tanggal_mulai,
+      tanggal_selesai,
+      keterangan,
+      jenis,
+      semua_kelas,
+      kalender_kelas (kelas)
+    `);
+
     for (let i = 1; i <= 7; i++) {
       const dt = new Date(
         now.getTime() - i * 86400000
@@ -824,8 +890,13 @@ router.get("/presensi-tertunda", requireAuth, async (req, res) => {
         ...(pelajaran || []),
         ...(ujian || []),
       ];
+      
 
       for (const j of semua) {
+
+        const libur = cekLibur(kalenderList, tanggal, j.kelas);
+
+        if (libur.is_libur) continue; 
         const { data: cek } =
           await supabase
             .from("absensi")
@@ -927,6 +998,40 @@ router.post("/presensi", requireAuth, async (req, res) => {
     const guru = await getGuruLogin(req.user.id);
     const { tanggal, id_jadwal, kelas_id, id_mapel, presensi } = req.body;
 
+        const { data: kalenderList } = await supabase
+      .from("kalender_akademik")
+      .select(`
+        tanggal_mulai,
+        tanggal_selesai,
+        keterangan,
+        jenis,
+        semua_kelas,
+        kalender_kelas (kelas)
+      `)
+      .lte("tanggal_mulai", tanggal)
+      .gte("tanggal_selesai", tanggal);
+
+    const libur = cekLibur(kalenderList, tanggal, kelas_id);
+
+    const { data: cekJadwal } = await supabase
+    .from("jadwal")
+    .select("id_jadwal")
+    .eq("id_jadwal", id_jadwal)
+    .eq("id_guru", guru.id_guru)
+    .single();
+
+  if (!cekJadwal) {
+    return res.status(403).json({
+      error: "Tidak berhak mengakses jadwal ini"
+    });
+  }
+
+    if (libur.is_libur) {
+      return res.status(400).json({
+        error: "Hari ini libur, tidak bisa presensi"
+      });
+    }
+
     if (!presensi || !Array.isArray(presensi)) {
       return res.status(400).json({ error: "Data presensi tidak valid" });
     }
@@ -1015,6 +1120,16 @@ router.get("/jadwal", requireAuth, async (req, res) => {
       });
 
     if (err1) throw err1;
+    const { data: kalenderList } = await supabase
+  .from("kalender_akademik")
+  .select(`
+    tanggal_mulai,
+    tanggal_selesai,
+    keterangan,
+    jenis,
+    semua_kelas,
+    kalender_kelas (kelas)
+  `);
 
     const hasilPelajaran = {
       Senin: [],
@@ -1025,14 +1140,35 @@ router.get("/jadwal", requireAuth, async (req, res) => {
       Sabtu: [],
     };
 
-    (pelajaran || []).forEach((j) => {
-      if (hasilPelajaran[j.hari]) {
-        hasilPelajaran[j.hari].push({
-          jam: `${String(j.mulai).slice(0, 5)} - ${String(j.selesai).slice(0, 5)}`,
-          mapel: `Kelas ${j.kelas} - ${j.mapel?.nama || "-"}`,
-        });
-      }
-    });
+  (pelajaran || []).forEach((j) => {
+
+    const hariIndex = {
+      Senin: 1, Selasa: 2, Rabu: 3,
+      Kamis: 4, Jumat: 5, Sabtu: 6
+    };
+
+    const todayDate = new Date();
+    const currentDay = todayDate.getDay();
+
+    const targetDay = hariIndex[j.hari];
+    const diff = targetDay - currentDay;
+
+    const tanggalObj = new Date(todayDate);
+    tanggalObj.setDate(todayDate.getDate() + diff);
+
+    const tanggal = todayManado(tanggalObj);
+
+    const libur = cekLibur(kalenderList || [], tanggal, j.kelas);
+
+    if (hasilPelajaran[j.hari]) {
+      hasilPelajaran[j.hari].push({
+        jam: `${String(j.mulai).slice(0, 5)} - ${String(j.selesai).slice(0, 5)}`,
+        mapel: `Kelas ${j.kelas} - ${j.mapel?.nama || "-"}`,
+        is_libur: libur.is_libur,
+        keterangan_libur: libur.keterangan
+      });
+    }
+  });
 
     /* ==========================
        JADWAL UJIAN
@@ -1064,11 +1200,18 @@ router.get("/jadwal", requireAuth, async (req, res) => {
 
     if (err2) throw err2;
 
-    const hasilUjian = (ujian || []).map((j) => ({
+    const hasilUjian = (ujian || []).map((j) => {
+
+    const libur = cekLibur(kalenderList || [], j.tanggal, j.kelas);
+
+    return {
       tanggal: j.tanggal,
       jam: `${String(j.mulai).slice(0, 5)} - ${String(j.selesai).slice(0, 5)}`,
       mapel: `Kelas ${j.kelas} - ${j.mapel?.nama || "-"}`,
-    }));
+      is_libur: libur.is_libur,
+      keterangan_libur: libur.keterangan
+    };
+  });
 
     res.json({
       pelajaran: hasilPelajaran,

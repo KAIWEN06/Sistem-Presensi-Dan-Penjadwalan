@@ -3,6 +3,45 @@ const router = express.Router();
 const supabase = require("../config/supabase");
 const requireAuth = require("../middleware/auth");
 
+function cekLibur(kalenderList, tanggal, kelasId = null) {
+  const normalizeDate = (d) => d ? String(d).slice(0,10) : null;
+
+  for (const k of kalenderList || []) {
+    const mulai = normalizeDate(k.tanggal_mulai);
+    const selesai = normalizeDate(k.tanggal_selesai);
+
+    const kenaTanggal =
+      tanggal && tanggal >= mulai && tanggal <= selesai;
+
+    if (!kenaTanggal) continue;
+
+    if (k.jenis !== "libur") continue;
+
+    // semua kelas
+    if (k.semua_kelas) {
+      return {
+        is_libur: true,
+        keterangan: k.keterangan
+      };
+    }
+
+    // kelas tertentu
+    if (kelasId !== null && kelasId !== undefined) {
+      const match = k.kalender_kelas?.some(
+        (kk) => String(kk.kelas) === String(kelasId)
+      );
+
+      if (match) {
+        return {
+          is_libur: true,
+          keterangan: k.keterangan
+        };
+      }
+    }
+  }
+
+  return { is_libur: false, keterangan: null };
+}
 
 const {
   todayManado,
@@ -149,6 +188,19 @@ router.get("/dashboard/:nis", requireAuth, async (req, res) => {
       )
     );
 
+    const { data: kalenderList } = await supabase
+    .from("kalender_akademik")
+    .select(`
+      tanggal_mulai,
+      tanggal_selesai,
+      keterangan,
+      jenis,
+      semua_kelas,
+      kalender_kelas (kelas)
+    `)
+    .lte("tanggal_mulai", today)
+    .gte("tanggal_selesai", today);
+
     /* absensi hari ini */
     const { data: absenHari, error: errAbsen } =
       await supabase
@@ -198,19 +250,30 @@ router.get("/dashboard/:nis", requireAuth, async (req, res) => {
         timeManado(sorted[0].created_at) + " WITA";
     }
 
-    /* susun hasil — gunakan data join, tidak perlu loop query lagi */
-    const hasil = jadwalHari.map((j) => {
-      const absen = (absenHari || []).find(
-        (a) => a.id_jadwal === j.id_jadwal
-      );
+  const hasil = jadwalHari.map((j) => {
 
-      return {
-        mapel: j.mapel?.nama || "-",
-        guru: j.guru_pengajar?.nama || "-",
-        jam: `${String(j.mulai).slice(0, 5)} - ${String(j.selesai).slice(0, 5)}`,
-        status: absen?.status || "Belum",
-      };
-    });
+  const libur = cekLibur(kalenderList || [], today, kelasAktif);
+
+  const absen = (absenHari || []).find(
+    (a) => a.id_jadwal === j.id_jadwal
+  );
+
+  let status = absen?.status || "Belum";
+
+  if (libur.is_libur) {
+    status = "Libur";
+  }
+
+  return {
+    mapel: j.mapel?.nama || "-",
+    guru: j.guru_pengajar?.nama || "-",
+    jam: `${String(j.mulai).slice(0, 5)} - ${String(j.selesai).slice(0, 5)}`,
+    status,
+
+    is_libur: libur.is_libur,
+    keterangan_libur: libur.keterangan
+  };
+});
 
     res.json({
       hariIni: hasil,
@@ -313,6 +376,17 @@ router.get("/jadwal/:nis", requireAuth, async (req, res) => {
     /* ===============================
        LOOP DATA
     =============================== */
+const { data: kalenderList } = await supabase
+  .from("kalender_akademik")
+  .select(`
+    tanggal_mulai,
+    tanggal_selesai,
+    keterangan,
+    jenis,
+    semua_kelas,
+    kalender_kelas (kelas)
+  `);
+
     for (const j of rows || []) {
       let namaMapel = "-";
       let namaGuru = "-";
@@ -341,10 +415,16 @@ router.get("/jadwal/:nis", requireAuth, async (req, res) => {
         namaGuru = guru[0].nama;
       }
 
+      const tanggal = j.tanggal || todayManado(); 
+      const libur = cekLibur(kalenderList || [], tanggal, kelasAktif);
+
       const item = {
         jam: `${String(j.mulai).slice(0, 5)} - ${String(j.selesai).slice(0, 5)}`,
         mapel: namaMapel,
         guru: namaGuru,
+
+         is_libur: libur.is_libur,
+        keterangan_libur: libur.keterangan
       };
 
       const jenis =
