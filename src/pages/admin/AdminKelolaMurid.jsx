@@ -1538,19 +1538,19 @@ function ActionBtn({
           </div>
         </div>
       )}
-        <ConfirmModal
-        open={showDelete}
-        title="Hapus Murid?"
-        desc="Data siswa akan dihapus permanen dan tidak bisa dikembalikan."
-        confirmText="Ya, Hapus"
-        cancelText="Batal"
-        danger={true}
-        loading={deleteLoading}
-        onClose={() =>
-          setShowDelete(false)
-        }
-        onConfirm={confirmDelete}
-      />
+          <ConfirmModal
+          open={showDelete}
+          title="Hapus Murid?"
+          desc="Data siswa akan dihapus permanen dan tidak bisa dikembalikan."
+          confirmText="Ya, Hapus"
+          cancelText="Batal"
+          danger={true}
+          loading={deleteLoading}
+          onClose={() =>
+            setShowDelete(false)
+          }
+          onConfirm={confirmDelete}
+        />
     </div>
   );
 }
