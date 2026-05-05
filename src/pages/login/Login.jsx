@@ -91,10 +91,10 @@ export default function Login() {
         return;
       }
 
-      localStorage.setItem(
-        "role",
-        profile.role
-      );
+const role = profile.role.toLowerCase().trim();
+localStorage.setItem("role", role);
+
+
       localStorage.setItem(
         "nama",
         profile.nama || ""
