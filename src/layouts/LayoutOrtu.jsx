@@ -1,87 +1,57 @@
-import { useState, useEffect } from "react";
-import { Outlet } from "react-router-dom";
-import Sidebar from "../components/ortu/SidebarOrtu";
-import AppHeader from "../components/AppHeader";
-import Footer from "../components/Footer";
+import bg from "../assets/foto/background.png";
+import logo from "../assets/foto/logo.png";
 
-export default function LayoutOrtu() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] =
-    useState(false);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setIsMobileSidebarOpen(false);
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    return () =>
-      window.removeEventListener(
-        "resize",
-        handleResize
-      );
-  }, []);
-
+export default function AuthLayout({ children }) {
   return (
-    <div className="h-screen flex bg-[#ECEBEB] text-gray-800 overflow-hidden">
+<div className="min-h-screen relative flex items-center justify-center p-4 sm:p-6 font-sans overflow-hidden">
 
-      {/* MOBILE OVERLAY */}
-      <div
-        onClick={() => setIsMobileSidebarOpen(false)}
-        className={`lg:hidden fixed inset-0 bg-black/45 backdrop-blur-sm z-40 transition-all duration-300 ${
-          isMobileSidebarOpen ? "opacity-100 visible" : "opacity-0 invisible"
-        }`}
-      />
+  {/* Background */}
+  <div
+    className="absolute inset-0 bg-cover bg-center z-0"
+    style={{
+      backgroundImage: `url(${bg})`,
+    }}
+  />
 
-      {/* DESKTOP SIDEBAR */}
-      <div className="hidden lg:block h-full">
-        <Sidebar
-          isSidebarOpen={isSidebarOpen}
-          mobile={false}
-        />
+  {/* Overlay */}
+  <div className="absolute inset-0 bg-black/30 backdrop-blur-sm z-10"></div>
+
+  {/* Card */}
+  <div className="relative z-20 w-full max-w-[920px] h-[500px] rounded-[32px] overflow-hidden shadow-2xl border border-white/20">
+
+    <div className="flex flex-col md:flex-row h-full">
+
+      {/* LEFT */}
+      <div className="w-full md:w-1/2 h-full bg-[#D1D1D1] px-8 py-10 lg:px-12 lg:py-12 flex items-center justify-center">
+        <div className="w-full max-w-[360px]">
+          {children}
+        </div>
       </div>
 
-      {/* MOBILE SIDEBAR */}
-      <div
-        className={`
-          fixed top-0 left-0 z-50 h-full lg:hidden
-          transition-transform duration-300 ease-out
-          ${
-            isMobileSidebarOpen
-              ? "translate-x-0"
-              : "-translate-x-full"
-          }
-        `}
-      >
-        <Sidebar
-          isSidebarOpen={true}
-          mobile={true}
-          closeSidebar={() =>
-            setIsMobileSidebarOpen(false)
-          }
-        />
-      </div>
+      {/* RIGHT */}
+      <div className="hidden md:flex w-full md:w-1/2 h-full bg-[#362B26] px-8 py-10 lg:px-12 lg:py-12 items-center justify-center text-center relative overflow-hidden">
 
-      {/* CONTENT */}
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto no-scrollbar p-3 sm:p-4 md:p-6">
+        {/* Top Glow */}
+        <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-white/10 to-transparent" />
 
-          <AppHeader
-            isSidebarOpen={isSidebarOpen}
-            setIsSidebarOpen={setIsSidebarOpen}
-            openMobileSidebar={() =>
-              setIsMobileSidebarOpen(true)
-            }
+        <div className="relative z-10">
+          <img
+            src={logo}
+            alt="Logo"
+            className="w-[135px] h-[135px] object-contain mx-auto mb-7 drop-shadow-2xl"
           />
 
-          <Outlet />
-        </main>
+          <h2 className="text-white text-[24px] lg:text-[28px] font-bold leading-[1.45] tracking-tight">
+            Sistem Presensi dan
+            <br />
+            Penjadwalan SD GMIM 12
+          </h2>
+        </div>
 
-        <Footer />
       </div>
+
     </div>
+  </div>
+</div>  
   );
 }
