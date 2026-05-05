@@ -869,32 +869,28 @@ router.get("/murid", requireAuth, async (req, res) => {
 
     if (errTahun) throw errTahun;
 
-    const { data, error } = await supabase
-      .from("kelas_siswa")
-        .select(
-          `
-            nis,
-            kelas,
-            status,
-            murid!left (
-              nama,
-              nama_ortu
-            )
-          `
-        )
-      .eq("tahun_id", tahunAktif.id)
-      .order("kelas", { ascending: true });
+const { data, error } = await supabase
+  .from("kelas_siswa")
+  .select(`
+    nis,
+    kelas,
+    status,
+    murid (
+      nama,
+      nama_ortu
+    )
+  `)
+  .eq("tahun_id", tahunAktif.id)
 
     if (error) throw error;
 
-    const hasil = (data || []).map(row => ({
-      nis: row.nis,
-      nama: row.murid?.nama || "-",
-      nama_ortu: row.murid?.nama_ortu || "-",
-      kelas: row.kelas,
-      status: row.status
-    }));
-
+const hasil = (data || []).map(row => ({
+  nis: row.nis,
+  nama: row.murid?.nama || "-",
+  nama_ortu: row.murid?.nama_ortu || "-",
+  kelas: row.kelas,
+  status: row.status
+}));
     res.json(hasil);
   } catch (err) {
     console.log(err);
@@ -944,25 +940,25 @@ router.get("/murid/lulus", requireAuth, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("kelas_siswa")
-      .select(
-        `
-            nis,
-            kelas,
-            tahun_id,
-            murid(nama)
-          `
-      )
+      .select(`
+        nis,
+        kelas,
+        tahun_id,
+        murid (
+          nama,
+          nama_ortu
+        )
+      `)
       .eq("status", "lulus")
-      .order("tahun_id", {
-        ascending: false
-      });
+      .order("tahun_id", { ascending: false });
 
     if (error) throw error;
 
     res.json(
       (data || []).map(x => ({
         nis: x.nis,
-        nama: (x.murid && x.murid.nama) || "-",
+        nama: x.murid?.nama || "-",
+        nama_ortu: x.murid?.nama_ortu || "-", // 🔥 sekarang muncul
         kelas: x.kelas,
         tahun: x.tahun_id,
         status: "lulus"
@@ -1103,6 +1099,98 @@ router.delete("/murid/:id", requireAuth, async (req, res) => {
   }
 });
 
+router.get("/murid/template", requireAuth, async (req, res) => {
+  try {
+    const XLSX = require("xlsx");
+
+    // =========================
+    // DATA TEMPLATE
+    // =========================
+    const data = [
+      ["NIS", "NAMA", "NAMA_ORANG_TUA", "KELAS"],
+      ["123456", "Rafael Kairupan", "Yohana Kairupan", "5A"]
+    ];
+
+    // =========================
+    // BUAT SHEET
+    // =========================
+    const ws = XLSX.utils.aoa_to_sheet(data);
+
+    // =========================
+    // LEBAR KOLOM
+    // =========================
+    ws["!cols"] = [
+      { wch: 15 },
+      { wch: 35 },
+      { wch: 35 },
+      { wch: 15 }
+    ];
+
+    // =========================
+    // TINGGI BARIS (OPTIONAL)
+    // =========================
+    ws["!rows"] = [
+      { hpt: 22 }, // header
+      { hpt: 20 }
+    ];
+
+    // =========================
+    // ALIGN CENTER SEMUA CELL
+    // =========================
+    const range = XLSX.utils.decode_range(ws["!ref"]);
+
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+
+        if (!ws[cellAddress]) continue;
+
+        // STYLE HEADER & ISI
+        ws[cellAddress].s = {
+          alignment: {
+            horizontal: "center",
+            vertical: "center"
+          },
+          font: R === 0 ? { bold: true } : {}
+        };
+      }
+    }
+
+    // =========================
+    // WORKBOOK
+    // =========================
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template Murid");
+
+    const buffer = XLSX.write(wb, {
+      type: "buffer",
+      bookType: "xlsx",
+      cellStyles: true
+    });
+
+    // =========================
+    // RESPONSE DOWNLOAD
+    // =========================
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=template_murid.xlsx"
+    );
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.send(buffer);
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      error: "Gagal generate template"
+    });
+  }
+});
+
 router.post(
   "/murid/upload",
   requireAuth,
@@ -1116,13 +1204,8 @@ router.post(
       }
 
       const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
       const rows = XLSX.utils.sheet_to_json(sheet);
-
-      let gagal = 0;
-      let berhasil = 0;
 
       const tahun = await supabase
         .from("tahun_ajaran")
@@ -1130,61 +1213,105 @@ router.post(
         .eq("aktif", true)
         .single();
 
-      const tahunId = (tahun.data && tahun.data.id) || null;
+      const tahunId = tahun.data?.id || null;
+
+      let gagal = 0;
+      let berhasil = 0;
+      const errors = [];
+
+      let index = 0;
+
       for (const row of rows) {
+        index++;
+
         const nis = String(row.NIS || "").trim();
-
         const nama = String(row.NAMA || "").trim();
-
-        const namaOrtu = String(
-          row.NAMA_ORANG_TUA || ""
-        ).trim();
-
-        const namaKelas = String(
-          row.KELAS || ""
-        ).trim();
+        const namaOrtu = String(row.NAMA_ORANG_TUA || "").trim();
+        const namaKelas = String(row.KELAS || "").trim();
 
         // VALIDASI WAJIB
         if (!nis || !nama || !namaKelas) {
           gagal++;
+          errors.push({ row: index + 1, reason: "Data wajib kosong" });
           continue;
         }
 
-        const { data: kelasDb } = await supabase
+        // VALIDASI LANJUTAN
+        if (nis.length < 3) {
+          gagal++;
+          errors.push({ row: index + 1, reason: "NIS terlalu pendek" });
+          continue;
+        }
+
+        if (nama.length < 3) {
+          gagal++;
+          errors.push({ row: index + 1, reason: "Nama terlalu pendek" });
+          continue;
+        }
+
+        if (!/^[0-9A-Z]+$/i.test(nis)) {
+          gagal++;
+          errors.push({ row: index + 1, reason: "Format NIS tidak valid" });
+          continue;
+        }
+
+        // CEK KELAS
+        const { data: kelasDb, error: errKelas } = await supabase
           .from("kelas")
           .select("id")
           .eq("nama", namaKelas)
           .eq("status", "aktif")
           .single();
 
-        if (!kelasDb) {
+        if (errKelas || !kelasDb) {
           gagal++;
+          errors.push({ row: index + 1, reason: "Kelas tidak ditemukan" });
           continue;
         }
 
-        await supabase.from("murid").upsert([
-          {
-            nis,
-            nama,
-            nama_ortu: namaOrtu || null
-          }
-        ]);
+        try {
+          // INSERT MURID
+          const { error: err1 } = await supabase.from("murid").upsert([
+            {
+              nis,
+              nama,
+              nama_ortu: namaOrtu || null
+            }
+          ]);
 
-        await supabase.from("kelas_siswa").upsert([
-          {
-            nis,
-            kelas: kelasDb.id,
-            tahun_id: tahunId,
-            status: "aktif"
-          }
-        ]);
+          if (err1) throw err1;
 
-        berhasil++;
+          // INSERT KELAS
+          const { error: err2 } = await supabase.from("kelas_siswa").upsert([
+            {
+              nis,
+              kelas: kelasDb.id,
+              tahun_id: tahunId,
+              status: "aktif"
+            }
+          ]);
+
+          if (err2) throw err2;
+
+          berhasil++;
+
+        } catch (e) {
+          gagal++;
+          errors.push({
+            row: index + 1,
+            reason: "Gagal simpan ke database"
+          });
+        }
       }
 
       res.json({
-        message: "Upload berhasil"
+        message: "Upload selesai",
+        berhasil,
+        gagal,
+        total: rows.length,
+        errors
       });
+
     } catch (err) {
       console.log(err);
 
@@ -1194,7 +1321,6 @@ router.post(
     }
   }
 );
-
 router.get("/tahun-ajaran/aktif", requireAuth, async (req, res) => {
   try {
     const { data, error } = await supabase

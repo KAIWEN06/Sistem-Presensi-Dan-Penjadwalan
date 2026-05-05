@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
 import api from "../../lib/axios";
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
 import {
   Calendar as CalendarIcon,
   CloudUpload,
@@ -127,6 +125,10 @@ export default function AdminKelolaMurid() {
     }
   }, [filterStatus]);
 
+  useEffect(() => {
+  console.log("DATA MASUK:", muridData);
+}, [muridData]);
+
   /* ===============================
      HANDLERS (Logic Intact)
   =============================== */
@@ -196,26 +198,62 @@ const toggleStatus = async (murid) => {
   }
 };
 
+const downloadTemplate = async () => {
+  const toastId = toast.loading("Mengunduh template...");
 
-  const downloadTemplate = () => {
-    const data = [
-      { NIS: "M001", NAMA: "Rafael Kairupan", NAMA_ORANG_TUA: "Yanto Kairupan", KELAS: "2" },
-      { NIS: "M002", NAMA: "Mikael Runtuwene", NAMA_ORANG_TUA: "Maria Runtuwene", KELAS: "2" }
-    ];
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
-    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-    saveAs(new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "template_murid.xlsx");
-  };
+  try {
+    const res = await api.get("/admin/murid/template", {
+      responseType: "blob"
+    });
 
-  const filteredData = muridData.filter((m) => {
-    const cocokSearch = `${m.nis} ${m.nama}`.toLowerCase().includes(search.toLowerCase());
-    const cocokStatus = filterStatus === "semua" ? true : m.status === filterStatus;
-    const cocokKelas = filterStatus === "lulus" ? true : filterKelas === "semua" ? true : String(m.kelas) === String(filterKelas);
-    const cocokTahun = filterStatus !== "lulus" ? true : filterTahunLulus === "semua" ? true : String(m.tahun) === String(filterTahunLulus);
-    return cocokSearch && cocokStatus && cocokKelas && cocokTahun;
-  });
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "template_murid.xlsx");
+
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    toast.success("Template berhasil diunduh", { id: toastId });
+
+  } catch (err) {
+    console.log(err);
+    toast.error("Gagal mengunduh template", { id: toastId });
+  }
+};
+
+const filteredData = muridData.filter((m) => {
+  if (!m) return false;
+
+  const cocokSearch = `${m.nis || ""} ${m.nama || ""}`
+    .toLowerCase()
+    .includes(search.toLowerCase());
+
+  const cocokStatus =
+    filterStatus === "semua"
+      ? true
+      : (m.status || "").toLowerCase() === filterStatus;
+
+  const cocokKelas =
+    filterStatus === "lulus"
+      ? true
+      : filterKelas === "semua"
+      ? true
+      : String(m.kelas) === String(filterKelas);
+
+  const cocokTahun =
+    filterStatus !== "lulus"
+      ? true
+      : filterTahunLulus === "semua"
+      ? true
+      : String(m.tahun) === String(filterTahunLulus);
+
+  return cocokSearch && cocokStatus && cocokKelas && cocokTahun;
+});
 
   const [listTahunLulus, setListTahunLulus] = useState([]);
 
@@ -368,55 +406,55 @@ const saveEdit = async (nis) => {
 ========================================================= */
 
 const uploadExcel = async () => {
-  try {
-    if (!excelFile)
-      return toast.error(
-        "Pilih file dulu"
-      );
+  if (!excelFile) {
+    return toast.error("Pilih file dulu");
+  }
 
+  const toastId = toast.loading("Mengunggah file...");
+
+  try {
     setUploadLoading(true);
 
-    const id =
-      toast.loading(
-        "Mengunggah file..."
+    const formData = new FormData();
+    formData.append("file", excelFile);
+
+    const res = await api.post("/admin/murid/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+
+    const { berhasil, gagal, errors } = res.data;
+
+    // SUCCESS MESSAGE
+    toast.success(
+      `Upload selesai • ${berhasil} berhasil • ${gagal} gagal`,
+      { id: toastId }
+    );
+
+    // 🔥 ERROR DETAIL (kalau ada)
+    if (errors && errors.length > 0) {
+      console.log("DETAIL ERROR:", errors);
+
+      toast.error(
+        `Ada ${errors.length} data gagal (lihat console)`,
+        { duration: 5000 }
       );
 
-    const formData =
-      new FormData();
-
-    formData.append(
-      "file",
-      excelFile
-    );
-
-    await api.post(
-      "/admin/murid/upload",
-      formData,
-      {
-        headers: {
-          "Content-Type":
-            "multipart/form-data"
-        }
-      }
-    );
-
-    toast.success(
-      "Upload berhasil",
-      { id }
-    );
+      // optional tampilkan 3 error pertama
+      errors.slice(0, 3).forEach((e) => {
+        toast.error(`Baris ${e.row}: ${e.reason}`);
+      });
+    }
 
     setExcelFile(null);
-
     fetchMurid();
+
   } catch (err) {
-    toast.error(
-      "Upload gagal"
-    );
+    console.log(err);
+    toast.error("Upload gagal", { id: toastId });
   } finally {
     setUploadLoading(false);
   }
 };
-
 function ActionBtn({
   children,
   onClick,
