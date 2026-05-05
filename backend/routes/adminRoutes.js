@@ -871,17 +871,17 @@ router.get("/murid", requireAuth, async (req, res) => {
 
     const { data, error } = await supabase
       .from("kelas_siswa")
-      .select(
-        `
-          nis,
-          kelas,
-          status,
-          murid (
-            nama,
-            nama_ortu
-          )
-        `
-      )
+        .select(
+          `
+            nis,
+            kelas,
+            status,
+            murid!left (
+              nama,
+              nama_ortu
+            )
+          `
+        )
       .eq("tahun_id", tahunAktif.id)
       .order("kelas", { ascending: true });
 
