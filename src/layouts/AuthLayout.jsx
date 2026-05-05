@@ -5,89 +5,81 @@ export default function AuthLayout({ children }) {
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 sm:p-6 font-sans overflow-hidden">
 
-  {/* Background */}
-  <div
-    className="absolute inset-0 bg-cover bg-center z-0 scale-105"
-    style={{
-      backgroundImage: `url(${bg})`,
-    }}
-  ></div>
+      {/* Background */}
+      <div
+        className="absolute inset-0 bg-cover bg-center z-0 scale-105 pointer-events-none"
+        style={{
+          backgroundImage: `url(${bg})`,
+        }}
+      />
 
-  {/* Cinematic Overlay */}
-  <div className="absolute inset-0 z-10
-    bg-gradient-to-br from-black/70 via-black/50 to-black/70
-    backdrop-blur-md">
-  </div>
+      {/* Overlay ringan (tidak gelap & tidak block klik) */}
+      <div className="absolute inset-0 z-10 bg-black/15 backdrop-blur-[1px] pointer-events-none" />
 
-  {/* Soft vignette (biar fokus ke tengah) */}
-  <div className="absolute inset-0 z-10 pointer-events-none
-    bg-[radial-gradient(circle_at_center,transparent_40%,rgba(0,0,0,0.55))]">
-  </div>
+      {/* Card */}
+      <div
+        className="
+          relative z-20 w-full max-w-[920px] h-[500px]
+          rounded-[32px] overflow-hidden
+          border border-white/20
+          bg-white/5 backdrop-blur-[6px]
+          shadow-[0_20px_60px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.4)]
+        "
+        style={{
+          animation: "fadeScale 0.4s ease-out",
+        }}
+      >
+        <div className="flex flex-col md:flex-row h-full">
 
-  {/* Card */}
-  <div className="relative z-20 w-full max-w-[920px] h-[500px]
-    rounded-[32px] overflow-hidden
-    shadow-[0_25px_80px_rgba(0,0,0,0.55)]
-    border border-white/10">
+          {/* LEFT */}
+          <div className="w-full md:w-1/2 h-full
+            bg-gradient-to-b from-[#F8F6F2] to-[#EFEAE4]
+            px-8 py-10 lg:px-12 lg:py-12
+            flex items-center justify-center">
 
-    <div className="flex flex-col md:flex-row h-full">
+            <div className="w-full max-w-[360px] space-y-4">
+              {children}
+            </div>
 
-      {/* LEFT - FORM */}
-      <div className="w-full md:w-1/2 h-full
-        bg-[#F5F3EF]
-        px-8 py-10 lg:px-12 lg:py-12
-        flex items-center justify-center">
+          </div>
 
-        <div className="w-full max-w-[360px]">
-          {children}
-        </div>
+          {/* Divider */}
+          <div className="hidden md:block w-[1px] bg-black/10"></div>
 
-      </div>
+          {/* RIGHT */}
+          <div className="hidden md:flex w-full md:w-1/2 h-full
+            bg-gradient-to-br from-[#5a463d] via-[#3a2d27] to-[#221917]
+            px-8 py-10 lg:px-12 lg:py-12
+            items-center justify-center text-center relative overflow-hidden">
 
-      {/* Divider halus */}
-      <div className="hidden md:block w-[1px] bg-white/10"></div>
+            {/* Glow halus */}
+            <div className="absolute -top-10 -right-10 w-60 h-60
+              bg-[#ffd89b]/10 blur-3xl rounded-full pointer-events-none" />
 
-      {/* RIGHT - BRANDING */}
-      <div className="hidden md:flex w-full md:w-1/2 h-full
-        bg-gradient-to-br from-[#4a3a33] via-[#2f2521] to-[#1b1412]
-        px-8 py-10 lg:px-12 lg:py-12
-        items-center justify-center text-center relative overflow-hidden">
+            <div className="relative z-10">
 
-        {/* Light top glow */}
-        <div className="absolute top-0 inset-x-0 h-32
-          bg-gradient-to-b from-white/10 to-transparent">
-        </div>
+              <img
+                src={logo}
+                alt="Logo"
+                className="w-[135px] h-[135px] object-contain mx-auto mb-7
+                drop-shadow-[0_10px_30px_rgba(255,255,255,0.25)]"
+              />
 
-        {/* Subtle ambient glow */}
-        <div className="absolute -bottom-20 -right-20 w-72 h-72
-          bg-white/5 blur-3xl rounded-full">
-        </div>
+              <h2 className="text-white/90 text-[24px] lg:text-[28px]
+                font-semibold leading-[1.45] tracking-tight
+                drop-shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+                Sistem Presensi dan
+                <br />
+                Penjadwalan SD GMIM 12
+              </h2>
 
-        <div className="relative z-10">
+            </div>
 
-          <img
-            src={logo}
-            alt="Logo"
-            className="w-[135px] h-[135px] object-contain mx-auto mb-7
-              drop-shadow-[0_10px_35px_rgba(255,255,255,0.25)]"
-          />
-
-          <h2 className="text-white/90 text-[24px] lg:text-[28px]
-            font-semibold leading-[1.45] tracking-tight
-            drop-shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-            Sistem Presensi dan
-            <br />
-            Penjadwalan SD GMIM 12
-          </h2>
+          </div>
 
         </div>
-
       </div>
 
     </div>
-
-  </div>
-
-</div>
   );
 }
