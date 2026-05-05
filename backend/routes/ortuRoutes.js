@@ -43,6 +43,7 @@ function cekLibur(kalenderList, tanggal, kelasId = null) {
   return { is_libur: false, keterangan: null };
 }
 
+
 const {
   todayManado,
   timeManado,
@@ -280,6 +281,97 @@ router.get("/dashboard/:nis", requireAuth, async (req, res) => {
       ringkasan,
       updateTerakhir,
     });
+  } catch (err) {
+    res.status(500).json({
+      error: err.message,
+    });
+  }
+});
+
+router.get("/presensi/:nis", requireAuth, async (req, res) => {
+  try {
+    const { nis } = req.params;
+    const { bulan, tahun, semester, hari } = req.query;
+
+    let query = supabase
+      .from("absensi")
+      .select(`
+        tanggal,
+        status,
+        kelas,
+        id_jadwal,
+        jadwal (
+          hari,
+          mulai,
+          selesai,
+          mapel ( nama )
+        )
+      `)
+      .eq("nis", nis);
+
+    // FILTER
+    if (bulan) {
+      query = query.gte("tanggal", `${tahun || "2026"}-${String(bulan).padStart(2,"0")}-01`)
+                   .lte("tanggal", `${tahun || "2026"}-${String(bulan).padStart(2,"0")}-31`);
+    }
+
+    if (tahun) {
+      query = query.gte("tanggal", `${tahun}-01-01`)
+                   .lte("tanggal", `${tahun}-12-31`);
+    }
+
+    const { data, error } = await query.order("tanggal", { ascending: false });
+
+    if (error) throw error;
+
+    /* =========================
+       FORMAT TABLE
+    ========================= */
+    const riwayat = (data || []).map((d) => ({
+      tanggal: d.tanggal,
+      hari: d.jadwal?.hari || "-",
+      jam: d.jadwal
+        ? `${String(d.jadwal.mulai).slice(0,5)} - ${String(d.jadwal.selesai).slice(0,5)}`
+        : "-",
+      mapel: d.jadwal?.mapel?.nama || "-",
+      status: d.status,
+    }));
+
+    /* =========================
+       STATS
+    ========================= */
+    const stats = {
+      hadir: 0,
+      izin: 0,
+      sakit: 0,
+      alpha: 0,
+      total: riwayat.length,
+    };
+
+    riwayat.forEach((r) => {
+      const s = r.status?.toLowerCase();
+      if (s === "hadir") stats.hadir++;
+      else if (s === "izin") stats.izin++;
+      else if (s === "sakit") stats.sakit++;
+      else stats.alpha++;
+    });
+
+    /* =========================
+       CHART
+    ========================= */
+    const chartData = [
+      { name: "Hadir", value: stats.hadir },
+      { name: "Izin", value: stats.izin },
+      { name: "Sakit", value: stats.sakit },
+      { name: "Alpha", value: stats.alpha },
+    ];
+
+    res.json({
+      stats,
+      riwayat,
+      chartData,
+    });
+
   } catch (err) {
     res.status(500).json({
       error: err.message,
