@@ -1,6 +1,8 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/common/ProtectedRoute";
+import { useEffect, useState } from "react";
+import SplashScreen from "./components/SplashScreen";
 import { Toaster } from "react-hot-toast";
 
 /* LOGIN */
@@ -36,6 +38,19 @@ const LihatJadwal = lazy(() => import("./pages/guru/LihatJadwal"));
 const LihatLaporan = lazy(() => import("./pages/guru/LaporanGuru"));
 
 function App() {
+  const [loading, setLoading] = useState(true);
+
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setLoading(false);
+  }, 1800);
+
+  return () => clearTimeout(timer);
+}, []);
+
+if (loading) {
+  return <SplashScreen />;
+}
   return (
     <>
       <Toaster
@@ -70,8 +85,14 @@ function App() {
 
       <Suspense
         fallback={
-          <div className="min-h-screen flex items-center justify-center text-gray-500">
-            Loading...
+          <div className="min-h-screen flex items-center justify-center bg-white">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+
+              <p className="text-sm text-gray-500 font-medium">
+                Sedang memuat...
+              </p>
+            </div>
           </div>
         }
       >
