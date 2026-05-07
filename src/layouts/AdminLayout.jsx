@@ -20,7 +20,6 @@ export default function AdminLayout() {
 
   return (
     <div className="h-screen flex bg-[#ECEBEB] text-gray-800 overflow-hidden">
-      {/* 1. OVERLAY - WAJIB ADA DI LUAR && AGAR ANIMASI BLUR JALAN */}
       <div
         onClick={() => setIsMobileSidebarOpen(false)}
         className={`lg:hidden fixed inset-0 bg-black/45 backdrop-blur-sm z-[119] transition-all duration-300 ${

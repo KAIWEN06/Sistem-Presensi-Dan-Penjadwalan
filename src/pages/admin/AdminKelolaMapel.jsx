@@ -267,7 +267,7 @@ const AdminKelolaMapel = () => {
   useState(false);
 
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 sm:space-y-8 animate-in fade-in duration-500">
+    <section className="max-w-7xl mx-auto py-8 space-y-12 animate-in fade-in duration-700">
       {/* STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard

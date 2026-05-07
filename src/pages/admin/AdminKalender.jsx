@@ -259,7 +259,7 @@ export default function AdminKalender() {
   };
 
   return (
-    <div className="p-4 sm:p-8 space-y-6 bg-[#fdfbf9] min-h-screen">
+    <div className="p-4 sm:p-8 rounded-[2.5rem] space-y-6 bg-[#fdfbf9] min-h-screen">
       
       <div className="flex justify-end">
         <button 
