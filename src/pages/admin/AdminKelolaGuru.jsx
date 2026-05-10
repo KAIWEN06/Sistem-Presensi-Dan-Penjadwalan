@@ -17,6 +17,7 @@ import {
 import toast from "react-hot-toast";
 import api from "../../lib/axios";
 import ConfirmModal from "../../components/ui/ConfirmModal";
+import { supabase } from "../../lib/supabase";
 
 // PREMIUM UI UPGRADE
 export default function AdminKelolaGuru() {
@@ -67,9 +68,28 @@ export default function AdminKelolaGuru() {
     }
   };
 
-  useEffect(() => {
-    fetchGuru();
-  }, []);
+useEffect(() => {
+  fetchGuru();
+
+  const channel = supabase
+    .channel("guru-realtime")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "guru",
+      },
+      () => {
+        fetchGuru();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
 
   // TOAST SYSTEM READY
   const handleTambah = async () => {
