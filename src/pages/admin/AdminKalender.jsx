@@ -411,7 +411,7 @@ export default function AdminKalender() {
                   onClick={() => setForm(prev => ({ ...prev, semua_kelas: true, kelas: [] }))}
                   className={`flex-1 py-2.5 text-xs font-extrabold rounded-xl transition-all duration-300 ${form.semua_kelas ? "bg-white text-[#715445] shadow-sm" : "text-gray-500"}`}
                 >
-                  Semua Siswa
+                  Semua kelas
                 </button>
                 <button
                   onClick={() => setForm(prev => ({ ...prev, semua_kelas: false }))}
