@@ -193,7 +193,7 @@ export default function AdminKelolaGuru() {
   const totalNonaktif = totalGuru - totalAktif;
 
   return (
-    <section className="w-full space-y-6 sm:space-y-8 animate-in fade-in duration-500">"
+    <section className="w-full space-y-6 sm:space-y-8 animate-in fade-in duration-700">
       {/* STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard

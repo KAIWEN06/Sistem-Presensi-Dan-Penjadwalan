@@ -203,7 +203,7 @@ export default function AdminKelolaKelas() {
     kelasData.length - totalAktif;
 
   return (
-    <section className="max-w-7xl mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-500">
+    <section className="w-full px-0 space-y-6 sm:space-y-8 animate-in fade-in duration-700">
       {/* STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard

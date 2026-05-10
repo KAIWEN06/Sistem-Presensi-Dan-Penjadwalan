@@ -478,7 +478,7 @@ function ActionBtn({
 
 
   return (
-    <section className="max-w-7xl mx-auto py-8 space-y-12 animate-in fade-in duration-700">
+    <section className="w-full px-0 py-8 space-y-12 animate-in fade-in duration-700">
       
       {/* SECTION 1: MANAJEMEN TAHUN AJARAN (VERCEL CARD) */}
       <section className="relative group">

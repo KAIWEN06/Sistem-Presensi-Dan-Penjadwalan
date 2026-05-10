@@ -103,7 +103,7 @@ const LihatJadwal = () => {
     );
 
   return (
-    <section className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
+    <section className="w-full px-0 py-5 sm:py-6 space-y-6 sm:space-y-8 animate-in fade-in duration-700">
       {/* TAB */}
       <div className="rounded-3xl bg-white border border-gray-100 shadow-sm p-3">
         <div className="grid grid-cols-2 gap-2">

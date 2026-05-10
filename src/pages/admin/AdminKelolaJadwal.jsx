@@ -272,7 +272,7 @@ const filtered = jadwalData.filter((item) => {
 });
 
   return (
-    <section className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
+    <section className="w-full px-0 space-y-6 sm:space-y-8 animate-in fade-in duration-700">
       {/* HEADER */}
       <div className="rounded-3xl bg-white border border-gray-100 shadow-sm p-4 sm:p-6 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-center">
