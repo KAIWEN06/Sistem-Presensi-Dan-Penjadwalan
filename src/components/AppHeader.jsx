@@ -212,8 +212,8 @@ export default function AppHeader({
           <div className="flex items-center gap-2 border-l border-gray-300 pl-3 sm:gap-3 sm:pl-5">
             {/* GANTI BAGIAN INI DENGAN USERDROPDOWN */}
             <UserDropdown 
-              nama={nama} 
               role={role} 
+              nama={nama} 
               avatar={avatar} 
             />
 
