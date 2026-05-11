@@ -453,6 +453,7 @@ const AdminBeranda = () => {
     time={j.time}
     is_libur={j.is_libur}
     keterangan_libur={j.keterangan_libur}
+    jenis={j.jenis}
   />
 ))}
           </div>
@@ -560,6 +561,7 @@ const AdminBeranda = () => {
                           time={j.time}
                           is_libur={j.is_libur}
                           keterangan_libur={j.keterangan_libur}
+                          jenis={j.jenis}
                         />
                         )
                       )}

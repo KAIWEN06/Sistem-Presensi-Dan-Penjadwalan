@@ -6,25 +6,60 @@ export default function ScheduleCard({
   teacher,
   time,
   is_libur,
-  keterangan_libur
+  keterangan_libur,
+  jenis
 }) {
+
+  let cardStyle = "bg-white border-gray-200";
+  let badgeStyle = "bg-gray-100 text-gray-600";
+  let titleStyle = "text-[#715445]";
+  let timeStyle = "text-gray-700";
+
+  if (jenis === "libur") {
+    cardStyle =
+      "bg-red-50 border-red-300 shadow-red-100";
+
+    badgeStyle =
+      "bg-red-100 text-red-600";
+
+    titleStyle = "text-red-600";
+
+    timeStyle = "text-red-500";
+  }
+
+  if (jenis === "kegiatan") {
+    cardStyle =
+      "bg-blue-50 border-blue-300 shadow-blue-100";
+
+    badgeStyle =
+      "bg-blue-100 text-blue-600";
+
+    titleStyle = "text-blue-700";
+
+    timeStyle = "text-blue-600";
+  }
+
+  if (jenis === "lainnya") {
+    cardStyle =
+      "bg-green-50 border-green-300 shadow-green-100";
+
+    badgeStyle =
+      "bg-green-100 text-green-600";
+
+    titleStyle = "text-green-700";
+
+    timeStyle = "text-green-600";
+  }
+
   return (
     <div
-      className={`border rounded-2xl p-4 shadow-sm space-y-2 transition-all ${
-        is_libur
-          ? "bg-red-50 border-red-300 shadow-red-100"
-          : "bg-white border-gray-200"
-      }`}
+      className={`border rounded-2xl p-4 shadow-sm space-y-2 transition-all ${cardStyle}`}
     >
 
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <span
-          className={`text-xs px-2 py-1 rounded ${
-            is_libur
-              ? "bg-red-100 text-red-600"
-              : "bg-gray-100 text-gray-600"
-          }`}
+          className={`text-xs px-2 py-1 rounded ${badgeStyle}`}
         >
           {type}
         </span>
@@ -36,9 +71,7 @@ export default function ScheduleCard({
 
       {/* TITLE */}
       <h3
-        className={`font-semibold text-base ${
-          is_libur ? "text-red-600" : "text-[#715445]"
-        }`}
+        className={`font-semibold text-base ${titleStyle}`}
       >
         {subject}
       </h3>
@@ -53,14 +86,12 @@ export default function ScheduleCard({
       </p>
 
       <p
-        className={`text-sm font-medium ${
-          is_libur ? "text-red-500" : "text-gray-700"
-        }`}
+        className={`text-sm font-medium ${timeStyle}`}
       >
         {time}
       </p>
 
-      {/* 🔥 LABEL LIBUR */}
+      {/* LABEL LIBUR */}
       {is_libur && (
         <div className="mt-2 px-2 py-1 rounded-md bg-red-100 text-red-600 text-xs font-semibold">
           Libur: {keterangan_libur}
