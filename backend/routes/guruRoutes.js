@@ -10,42 +10,55 @@ const {
 } = require("../utils/timezone");
 
 function cekLibur(kalenderList, tanggal, kelasId = null) {
-  const normalizeDate = (d) => d ? String(d).slice(0,10) : null;
+  const normalizeDate = (d) =>
+    d ? String(d).slice(0, 10) : null;
 
   for (const k of kalenderList || []) {
     const mulai = normalizeDate(k.tanggal_mulai);
     const selesai = normalizeDate(k.tanggal_selesai);
 
     const kenaTanggal =
-      tanggal && tanggal >= mulai && tanggal <= selesai;
+      tanggal &&
+      tanggal >= mulai &&
+      tanggal <= selesai;
 
     if (!kenaTanggal) continue;
-    if (k.jenis !== "libur") continue;
 
     // semua kelas
     if (k.semua_kelas) {
       return {
-        is_libur: true,
+        is_libur: k.jenis === "libur",
+        jenis: k.jenis,
         keterangan: k.keterangan
       };
     }
 
     // kelas tertentu
-    if (kelasId !== null && kelasId !== undefined) {
+    if (
+      kelasId !== null &&
+      kelasId !== undefined
+    ) {
       const match = k.kalender_kelas?.some(
-        (kk) => String(kk.kelas) === String(kelasId)
+        (kk) =>
+          String(kk.kelas) ===
+          String(kelasId)
       );
 
       if (match) {
         return {
-          is_libur: true,
+          is_libur: k.jenis === "libur",
+          jenis: k.jenis,
           keterangan: k.keterangan
         };
       }
     }
   }
 
-  return { is_libur: false, keterangan: null };
+  return {
+    is_libur: false,
+    jenis: null,
+    keterangan: null
+  };
 }
 
 function capitalize(text = "") {
@@ -609,8 +622,8 @@ router.get("/dashboard", requireAuth, async (req, res) => {
 
     status: stat,
 
-    // 🔥 TAMBAHAN
     is_libur: libur.is_libur,
+    jenis: libur.jenis || null,
     keterangan_libur: libur.keterangan
   });
 }
@@ -804,9 +817,9 @@ router.get("/kelas-ajar", requireAuth, async (req, res) => {
 
     status_presensi: statusPresensi,
 
-    // 🔥 ini tetap aman
     is_libur: libur.is_libur,
-    keterangan_libur: libur.keterangan
+  jenis: libur.jenis || null,
+  keterangan_libur: libur.keterangan
   });
 }
 
@@ -1165,6 +1178,7 @@ router.get("/jadwal", requireAuth, async (req, res) => {
         jam: `${String(j.mulai).slice(0, 5)} - ${String(j.selesai).slice(0, 5)}`,
         mapel: `Kelas ${j.kelas} - ${j.mapel?.nama || "-"}`,
         is_libur: libur.is_libur,
+        jenis: libur.jenis || null,
         keterangan_libur: libur.keterangan
       });
     }
@@ -1209,6 +1223,7 @@ router.get("/jadwal", requireAuth, async (req, res) => {
       jam: `${String(j.mulai).slice(0, 5)} - ${String(j.selesai).slice(0, 5)}`,
       mapel: `Kelas ${j.kelas} - ${j.mapel?.nama || "-"}`,
       is_libur: libur.is_libur,
+      jenis: libur.jenis || null,
       keterangan_libur: libur.keterangan
     };
   });

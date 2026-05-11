@@ -4,43 +4,55 @@ const supabase = require("../config/supabase");
 const requireAuth = require("../middleware/auth");
 
 function cekLibur(kalenderList, tanggal, kelasId = null) {
-  const normalizeDate = (d) => d ? String(d).slice(0,10) : null;
+  const normalizeDate = (d) =>
+    d ? String(d).slice(0, 10) : null;
 
   for (const k of kalenderList || []) {
     const mulai = normalizeDate(k.tanggal_mulai);
     const selesai = normalizeDate(k.tanggal_selesai);
 
     const kenaTanggal =
-      tanggal && tanggal >= mulai && tanggal <= selesai;
+      tanggal &&
+      tanggal >= mulai &&
+      tanggal <= selesai;
 
     if (!kenaTanggal) continue;
-
-    if (k.jenis !== "libur") continue;
 
     // semua kelas
     if (k.semua_kelas) {
       return {
-        is_libur: true,
+        is_libur: k.jenis === "libur",
+        jenis: k.jenis,
         keterangan: k.keterangan
       };
     }
 
     // kelas tertentu
-    if (kelasId !== null && kelasId !== undefined) {
+    if (
+      kelasId !== null &&
+      kelasId !== undefined
+    ) {
       const match = k.kalender_kelas?.some(
-        (kk) => String(kk.kelas) === String(kelasId)
+        (kk) =>
+          String(kk.kelas) ===
+          String(kelasId)
       );
 
       if (match) {
         return {
-          is_libur: true,
+          is_libur: k.jenis === "libur",
+          jenis: k.jenis,
           keterangan: k.keterangan
         };
       }
     }
   }
 
-  return { is_libur: false, keterangan: null };
+  return {
+    is_libur: false,
+    jenis: null,
+    keterangan: null
+  };
 }
 
 
@@ -272,6 +284,7 @@ router.get("/dashboard/:nis", requireAuth, async (req, res) => {
     status,
 
     is_libur: libur.is_libur,
+    jenis: libur.jenis || null,
     keterangan_libur: libur.keterangan
   };
 });
@@ -515,7 +528,8 @@ const { data: kalenderList } = await supabase
         mapel: namaMapel,
         guru: namaGuru,
 
-         is_libur: libur.is_libur,
+        is_libur: libur.is_libur,
+        jenis: libur.jenis || null,
         keterangan_libur: libur.keterangan
       };
 

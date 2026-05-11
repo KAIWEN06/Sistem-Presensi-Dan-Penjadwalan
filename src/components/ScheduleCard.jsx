@@ -50,6 +50,7 @@ export default function ScheduleCard({
 
     timeStyle = "text-green-600";
   }
+  
 
   return (
     <div
@@ -92,11 +93,27 @@ export default function ScheduleCard({
       </p>
 
       {/* LABEL LIBUR */}
-      {is_libur && (
-        <div className="mt-2 px-2 py-1 rounded-md bg-red-100 text-red-600 text-xs font-semibold">
-          Libur: {keterangan_libur}
-        </div>
-      )}
+{jenis && (
+  <div
+    className={`
+      mt-2 px-2 py-1 rounded-md text-xs font-semibold
+      ${
+        jenis === "libur"
+          ? "bg-red-100 text-red-600"
+          : jenis === "kegiatan"
+          ? "bg-blue-100 text-blue-600"
+          : "bg-green-100 text-green-600"
+      }
+    `}
+  >
+    {jenis === "libur"
+      ? "Libur"
+      : jenis === "kegiatan"
+      ? "Kegiatan"
+      : "Agenda"}{" "}
+    : {keterangan_libur}
+  </div>
+)}
     </div>
   );
 }

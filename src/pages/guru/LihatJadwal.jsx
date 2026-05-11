@@ -323,33 +323,54 @@ function HariCard({
               idx
             ) => (
               <div
-                key={
-                  idx
-                }
-                className={`rounded-2xl border p-3 ${
-                item.is_libur
-                  ? "bg-red-50 border-red-200"
-                  : "bg-white border-gray-100"
-              }`}
-              >
-                <p className="text-xs font-black text-[#715445]">
-                  {
-                    item.jam
-                  }
-                </p>
+  key={idx}
+  className={`rounded-2xl border p-3 ${
+    item.jenis === "libur"
+      ? "bg-red-50 border-red-200"
+      : item.jenis === "kegiatan"
+      ? "bg-blue-50 border-blue-200"
+      : item.jenis === "lainnya"
+      ? "bg-green-50 border-green-200"
+      : "bg-white border-gray-100"
+  }`}
+>
+  <p
+    className={`text-xs font-black ${
+      item.jenis === "libur"
+        ? "text-red-600"
+        : item.jenis === "kegiatan"
+        ? "text-blue-700"
+        : item.jenis === "lainnya"
+        ? "text-green-700"
+        : "text-[#715445]"
+    }`}
+  >
+    {item.jam}
+  </p>
 
-                <p className="text-sm font-bold text-gray-800 mt-1 leading-snug">
-                  {
-                    item.mapel
-                  }
-                </p>
+  <p className="text-sm font-bold text-gray-800 mt-1 leading-snug">
+    {item.mapel}
+  </p>
 
-                {item.is_libur && (
-                  <p className="text-red-500 text-xs font-bold mt-1">
-                    Libur: {item.keterangan_libur}
-                  </p>
-                )}
-              </div>
+  {item.jenis && (
+    <p
+      className={`text-xs font-bold mt-1 ${
+        item.jenis === "libur"
+          ? "text-red-500"
+          : item.jenis === "kegiatan"
+          ? "text-blue-600"
+          : "text-green-600"
+      }`}
+    >
+      {item.jenis === "libur"
+        ? "Libur"
+        : item.jenis === "kegiatan"
+        ? "Kegiatan"
+        : "Agenda"}{" "}
+      : {item.keterangan_libur}
+    </p>
+  )}
+</div>
             )
           )
         ) : (

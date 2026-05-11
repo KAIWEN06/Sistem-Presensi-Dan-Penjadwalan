@@ -92,11 +92,28 @@ const DashboardGuru = () => {
     });
   };
 
-const statusBadge = (status, is_libur) => {
-  if (is_libur) {
+const statusBadge = (status, jenis) => {
+
+  if (jenis === "libur") {
     return (
       <span className="inline-flex items-center px-3 rounded-full text-xs font-bold bg-red-100 text-red-600">
         Libur
+      </span>
+    );
+  }
+
+  if (jenis === "kegiatan") {
+    return (
+      <span className="inline-flex items-center px-3 rounded-full text-xs font-bold bg-blue-100 text-blue-600">
+        Kegiatan
+      </span>
+    );
+  }
+
+  if (jenis === "lainnya") {
+    return (
+      <span className="inline-flex items-center px-3 rounded-full text-xs font-bold bg-green-100 text-green-600">
+        Agenda
       </span>
     );
   }
@@ -215,31 +232,58 @@ const statusBadge = (status, is_libur) => {
                 key={i}
                 disabled={item.is_libur}
                 onClick={() => handleOpenPresensi(item)}
-                className={`w-full text-left rounded-3xl p-4 sm:p-5 transition-all ${
-                  item.is_libur
+                className={`w-full text-left rounded-3xl p-4 sm:p-5 transition-all border ${
+                  item.jenis === "libur"
                     ? "bg-red-50 border-red-200 cursor-not-allowed opacity-70"
+                    : item.jenis === "kegiatan"
+                    ? "bg-blue-50 border-blue-200"
+                    : item.jenis === "lainnya"
+                    ? "bg-green-50 border-green-200"
                     : "bg-white border-gray-100 hover:shadow-md"
                 }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <p className="text-lg font-black text-[#715445]">
-                      {item.jam}
-                    </p>
+                    <p
+                    className={`text-lg font-black ${
+                      item.jenis === "libur"
+                        ? "text-red-600"
+                        : item.jenis === "kegiatan"
+                        ? "text-blue-700"
+                        : item.jenis === "lainnya"
+                        ? "text-green-700"
+                        : "text-[#715445]"
+                    }`}
+                  >
+                    {item.jam}
+                  </p>
 
                     <p className="text-sm sm:text-base text-gray-700 font-semibold">
                       {item.kelas}
                     </p>
 
-                    {item.is_libur && (
-                      <p className="text-red-500 text-xs font-bold mt-1">
-                        Libur: {item.keterangan_libur}
-                      </p>
-                    )}
+                    {item.jenis && (
+                    <p
+                      className={`text-xs font-bold mt-1 ${
+                        item.jenis === "libur"
+                          ? "text-red-500"
+                          : item.jenis === "kegiatan"
+                          ? "text-blue-600"
+                          : "text-green-600"
+                      }`}
+                    >
+                      {item.jenis === "libur"
+                        ? "Libur"
+                        : item.jenis === "kegiatan"
+                        ? "Kegiatan"
+                        : "Agenda"}{" "}
+                      : {item.keterangan_libur}
+                    </p>
+                  )}
                   </div>
 
                   <div className="flex items-center gap-3 flex-wrap">
-                    {statusBadge(item.status, item.is_libur)}
+                    {statusBadge(item.status, item.jenis)}
 
 
                     <span className="w-10 h-10 rounded-2xl bg-[#715445] text-white inline-flex items-center justify-center">
