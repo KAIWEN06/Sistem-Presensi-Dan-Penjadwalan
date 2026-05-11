@@ -111,13 +111,31 @@ const CustomToolbar = ({ label, onNavigate, onView, view }) => {
   );
 };
 
-const EventItem = ({ event }) => (
-  <div className={`px-2 py-1 rounded-md text-[10px] sm:text-xs font-semibold truncate border-l-4 shadow-sm ${
-    event.jenis === 'libur' ? 'bg-red-50 text-red-700 border-red-500' : 'bg-[#715445]/10 text-[#715445] border-[#715445]'
-  }`}>
-    {event.title}
-  </div>
-);
+const EventItem = ({ event }) => {
+  let style = "";
+
+  if (event.jenis === "libur") {
+    style =
+      "bg-red-50 text-red-700 border-red-500";
+  } else if (event.jenis === "kegiatan") {
+    style =
+      "bg-blue-50 text-blue-700 border-blue-500";
+  } else if (event.jenis === "lainnya") {
+    style =
+      "bg-green-50 text-green-700 border-green-500";
+  } else {
+    style =
+      "bg-gray-50 text-gray-700 border-gray-400";
+  }
+
+  return (
+    <div
+      className={`px-2 py-1 rounded-md text-[10px] sm:text-xs font-semibold truncate border-l-4 shadow-sm ${style}`}
+    >
+      {event.title}
+    </div>
+  );
+};
 
 /* ================= MAIN COMPONENT ================= */
 export default function AdminKalender() {
@@ -147,7 +165,7 @@ export default function AdminKalender() {
         start: toStartOfDay(e.start),
         end: toEndOfDay(e.end),
         keterangan: e.title,
-        jenis: e.type,
+        jenis: e.jenis,
         semua_kelas: e.semua_kelas,
         kelas: e.kelas || []
       })));

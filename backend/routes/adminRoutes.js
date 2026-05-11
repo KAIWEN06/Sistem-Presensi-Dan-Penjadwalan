@@ -1897,12 +1897,12 @@ router.get("/kalender", requireAuth, async (req, res) => {
 
     if (error) throw error;
 
-    const data = kalender.map((row) => ({
-      id: row.id,
-      title: row.keterangan,
-      start: row.tanggal_mulai,
-      end: row.tanggal_selesai,
-      type: row.jenis,
+  const data = kalender.map((row) => ({
+    id: row.id,
+    title: row.keterangan,
+    start: row.tanggal_mulai,
+    end: row.tanggal_selesai,
+    jenis: row.jenis,
       color:
         row.jenis === "libur"
           ? "#E16766"
