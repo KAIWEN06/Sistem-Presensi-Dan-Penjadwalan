@@ -58,13 +58,6 @@ export default function ResetKirim() {
 
   return (
     <AuthLayout>
-      {/* RESPONSIVE FIX */}
-      {/* NOTE:
-          Panel kanan harus dihandle di AuthLayout:
-          hidden md:flex / hidden lg:flex
-          File ini dibuat fokus panel kiri only
-      */}
-
       <div
         className="
           w-full
