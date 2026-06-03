@@ -8,7 +8,6 @@ import { Toaster } from "react-hot-toast";
 /* LOGIN */
 const Login = lazy(() => import("./pages/login/Login"));
 const ResetPassword = lazy(() => import("./pages/login/ResetKirim"));
-const Reset = lazy(() => import("./pages/login/Reset"));
 const UpdatePassword = lazy(() => import("./pages/login/ResetUbah"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
@@ -102,7 +101,6 @@ if (loading) {
 
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/reset" element={<Reset />} />
           <Route
             path="/update-password"
             element={<UpdatePassword />}
