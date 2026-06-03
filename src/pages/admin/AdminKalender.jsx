@@ -232,7 +232,6 @@ export default function AdminKalender() {
     }
   };
 
-  // --- LOGIKA HAPUS DENGAN TOAST CONFIRM ---
   const performDelete = async () => {
     const loadingToast = toast.loading("Menghapus agenda...");
     try {
